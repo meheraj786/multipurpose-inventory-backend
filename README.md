@@ -178,11 +178,16 @@ RESTful APIs with endpoints grouped by resource. All endpoints use JWT auth (exc
 - **Waste Adjustment:** PUT /api/inventory/:id/waste → log waste for products/raw/prepared; update profit calcs.  
 - **Profit Report:** GET /api/reports/profit → aggregate (SUM((selling \- cost) \* qty)) / total inventory \* 100 for %.
 
-Figma Link- [Figma](https://www.figma.com/design/3SDsyYKY0MtYUrDvqiO4r3/End-to-End-Inventory-Management-System--TheUnityWare---Community-?t=kmT7F6pWRpLxTvN0-1)  
-Figma Link- [Figma](https://www.figma.com/design/7ldUEpNEh6Vrb0PIrRA6TN/Inventory-Management-Dashboard--Community-?node-id=476-645&t=kmT7F6pWRpLxTvN0-1)
+Figma Link- [Figma](https://www.figma.com/design/mgDAxgDg1R24NX7gl6Xcos/Multipurpose-Inventory-Management?t=uk1if0BdfAXjNxTc-1)
 
 Diagrams\-![]
 
-<img src="https://ibb.co.com/23WXB7jr"/>
+<img src="https://res.cloudinary.com/dlrycnxnh/image/upload/v1773400516/Untitled-2026-03-12-2336_l0hx71.png" alt="Alt Text" width="500">
+<img src="https://res.cloudinary.com/dlrycnxnh/image/upload/v1773400517/Untitled-2026-03-12-2342_r7wfej.png" alt="Alt Text" width="500">
+<img src="https://res.cloudinary.com/dlrycnxnh/image/upload/v1773400516/Untitled-2026-03-12-2341_mdi4gr.png" alt="Alt Text" width="500">
+<img src="https://res.cloudinary.com/dlrycnxnh/image/upload/v1773400517/Untitled-2026-03-12-2338_lnbfo0.png" alt="Alt Text" width="500">
+<img src="https://res.cloudinary.com/dlrycnxnh/image/upload/v1773400517/Untitled-2026-03-12-2340_qwlmqr.png" alt="Alt Text" width="500">
+<img src="https://res.cloudinary.com/dlrycnxnh/image/upload/v1773400517/Untitled-2026-03-12-2339_ea9hwn.png" alt="Alt Text" width="500">
+<img src="https://res.cloudinary.com/dlrycnxnh/image/upload/v1773400516/Untitled-2026-03-12-2337_ownosg.png" alt="Alt Text" width="500">
 
 
