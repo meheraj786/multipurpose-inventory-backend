@@ -13,15 +13,15 @@ const PORT = process.env.PORT || 5000;
 console.log();
 
 (async () => {
-		try {
-			await dbConnect();
-			app.use(cors());
-			app.use(cookieParser());
-			app.use(express.json());
-			app.use(routers);
+	try {
+		await dbConnect();
+		app.use(cors());
+		app.use(cookieParser());
+		app.use(express.json());
+		app.use(routers);
 
-			app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-		} catch (error) {
-			console.error("Something went wrong:", error);
-		}
-	})();
+		app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+	} catch (error) {
+		console.error("Something went wrong:", error);
+	}
+})();

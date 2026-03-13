@@ -1,8 +1,8 @@
-import express, { Request, Response, type Router } from "express";
+import express, { type Response, type Router } from "express";
 
 const apiRoutes: Router = express.Router();
 
-apiRoutes.get("/", (req, res) => {
+apiRoutes.get("/", (res: Response) => {
 	res.send("Working");
 });
 
