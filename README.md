@@ -40,56 +40,53 @@ The application follows a client-server architecture with separation of concerns
 - Use environment variables (.env) for configs (e.g., business type toggles).  
 - Follow RESTful API standards (resource-based routes, proper HTTP methods/status codes).
 
-**Folder Structure (Recommended):**  
-**Backend (server/):**
+**Folder Structure:**  
+**Backend (`multipurpose-inventory-backend/`):**
 
-server/
-
+```text
+multipurpose-inventory-backend/
 ├── src/
+│   ├── controllers/      # Request handlers
+│   ├── database/         # Database configuration
+│   │   └── db.config.ts
+│   ├── middleware/       # Custom middlewares
+│   ├── models/           # Data models
+│   ├── routes/           # API routes
+│   │   ├── api/
+│   │   │   └── index.ts
+│   │   └── index.ts
+│   ├── utils/            # Utility classes & functions
+│   │   ├── ApiError.ts
+│   │   └── ApiResponse.ts
+│   └── index.ts          # Entry point
+├── .env.sample           # Environment variables template
+├── .gitignore            # Git ignore file
+├── biome.json            # Linter & Formatter config
+├── package.json          # Dependencies & scripts
+├── pnpm-lock.yaml        # Lock file
+├── tsconfig.json         # TypeScript config
+└── README.md
+```
 
-│   ├── config/          \# db.js, env, constants (business type config)
+**Frontend (`multipurpose-inventory-management/`):**
 
-│   ├── controllers/     \# authController, itemController, etc.
-
-│   ├── middlewares/     \# auth.js (JWT verify), errorHandler.js, roleCheck.js
-
-│   ├── models/          \# Item.js, Purchase.js, Sale.js, User.js, etc.
-
-│   ├── routes/          \# itemRoutes.js, purchaseRoutes.js, etc.
-
-│   ├── services/        \# business logic: stockService.js, profitService.js (with % calc)
-
-│   ├── utils/           \# jwt.js, validators (Zod/Joi)
-
-│   └── app.js / server.js
-
-├── .env
-
-└── package.json
-
-**Frontend (client/):**
-
-client/
-
-├── src/
-
-│   ├── components/      \# reusable: ItemForm (with business type switch), StockAlert, RecipeBuilder
-
-│   ├── pages/           \# Dashboard, Items, Sales, Purchases, Login
-
-│   ├── context/         \# AuthContext, InventoryContext (for flexible modes)
-
-│   ├── hooks/           \# useAuth, useStock (with TanStack Query)
-
-│   ├── services/        \# api.js (Axios instance)
-
-│   ├── routes/          \# AppRoutes (React Router)
-
-│   └── App.jsx
-
-├── public/
-
-└── package.json
+```text
+multipurpose-inventory-management/
+├── app/                  # Next.js App Router directory
+│   ├── favicon.ico
+│   ├── globals.css
+│   ├── layout.tsx
+│   └── page.tsx
+├── biome.json            # Linter & Formatter config
+├── eslint.config.mjs     # ESLint configuration
+├── next.config.ts        # Next.js configuration
+├── package.json          # Dependencies & scripts
+├── pnpm-lock.yaml        # Lock file
+├── pnpm-workspace.yaml   # PNPM workspace configuration
+├── postcss.config.mjs    # PostCSS configuration
+├── tsconfig.json         # TypeScript config
+└── README.md
+```
 
 ### 3\. Tech Stack & Tools
 
