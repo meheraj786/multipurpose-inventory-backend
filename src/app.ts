@@ -17,7 +17,7 @@ app.use(
     origin: "*",
   }),
 );
-
+console.log("hello world");
 // Body parsing
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
