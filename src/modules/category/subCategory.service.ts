@@ -7,14 +7,9 @@ import {
 import prisma from "../../shared/utils/prisma.js";
 import { TrashService } from "../trash/trash.service.js";
 import { ActivityLogService } from "../activityLog/activityLog.service.js";
-import type {
-  CreateSubCategoryInput,
-  UpdateSubCategoryInput,
-} from "./subCategory.validation.js";
+import type { CreateSubCategoryInput, UpdateSubCategoryInput } from "./subCategory.validation.js";
 
-const createSubCategory = async (
-  data: CreateSubCategoryInput,
-): Promise<SubCategory> => {
+const createSubCategory = async (data: CreateSubCategoryInput): Promise<SubCategory> => {
   return await prisma.subCategory.create({ data });
 };
 
@@ -49,11 +44,7 @@ const updateSubCategory = async (
   });
 };
 
-const deleteSubCategory = async (
-  id: string,
-  accountId: string,
-  userId: string,
-) => {
+const deleteSubCategory = async (id: string, accountId: string, userId: string) => {
   return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const subCategory = await tx.subCategory.findUnique({
       where: { id, accountId },

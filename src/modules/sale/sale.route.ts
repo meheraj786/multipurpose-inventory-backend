@@ -5,11 +5,7 @@ import { SaleValidation } from "./sale.validation.js";
 
 const router = Router();
 
-router.post(
-  "/",
-  validateRequest(SaleValidation.createSaleZodSchema),
-  SaleController.createSale,
-);
+router.post("/", validateRequest(SaleValidation.createSaleZodSchema), SaleController.createSale);
 router.get("/", SaleController.getAllSales);
 router.get("/:id", SaleController.getSingleSale);
 router.patch(

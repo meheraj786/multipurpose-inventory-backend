@@ -61,11 +61,7 @@ const getSingleSale = async (id: string, accountId: string) => {
   });
 };
 
-const updateSale = async (
-  id: string,
-  accountId: string,
-  data: UpdateSaleInput,
-): Promise<Sale> => {
+const updateSale = async (id: string, accountId: string, data: UpdateSaleInput): Promise<Sale> => {
   return await prisma.sale.update({
     where: { id, accountId },
     data,
