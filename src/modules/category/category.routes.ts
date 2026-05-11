@@ -10,7 +10,13 @@ router.post(
   validateRequest(CategoryValidation.createCategoryZodSchema),
   CategoryController.createCategory,
 );
-
 router.get("/", CategoryController.getAllCategories);
+router.get("/:id", CategoryController.getSingleCategory);
+router.patch(
+  "/:id",
+  validateRequest(CategoryValidation.updateCategoryZodSchema),
+  CategoryController.updateCategory,
+);
+router.delete("/:id", CategoryController.deleteCategory);
 
-export const CategoryRoutes: Router = router;
+export const CategoryRoutes = router;

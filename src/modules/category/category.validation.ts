@@ -8,6 +8,18 @@ const createCategoryZodSchema = z.object({
   }),
 });
 
-export type CreateCategoryInput = z.infer<typeof createCategoryZodSchema>["body"];
+const updateCategoryZodSchema = z.object({
+  body: z.object({
+    name: z.string().min(2).max(50).optional(),
+    description: z.string().optional(),
+    accountId: z.string(),
+  }),
+});
 
-export const CategoryValidation = { createCategoryZodSchema };
+export type CreateCategoryInput = z.infer<typeof createCategoryZodSchema>["body"];
+export type UpdateCategoryInput = z.infer<typeof updateCategoryZodSchema>["body"];
+
+export const CategoryValidation = {
+  createCategoryZodSchema,
+  updateCategoryZodSchema,
+};

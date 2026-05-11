@@ -3,6 +3,30 @@ import { SystemAction, type SystemModule } from "../../generated/prisma/enums.js
 import prisma from "../../shared/utils/prisma.js";
 import { ActivityLogService } from "../activityLog/activityLog.service.js";
 
+const addToTrash = async ({
+  moduleName,
+  itemName,
+  itemId,
+  deletedBy,
+  accountId,
+}: {
+  moduleName: SystemModule;
+  itemName: string;
+  itemId: string;
+  deletedBy: string;
+  accountId: string;
+}) => {
+  return await prisma.trash.create({
+    data: {
+      moduleName,
+      itemName,
+      itemId,
+      deletedBy,
+      accountId,
+    },
+  });
+};
+
 const getTrashByAccount = async (accountId: string) => {
   return await prisma.trash.findMany({
     where: { accountId },
@@ -10,11 +34,7 @@ const getTrashByAccount = async (accountId: string) => {
   });
 };
 
-const restoreItem = async (
-  trashId: string,
-  accountId: string,
-  userId: string,
-) => {
+const restoreItem = async (trashId: string, accountId: string, userId: string) => {
   return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const trashItem = await tx.trash.findUnique({ where: { id: trashId } });
     if (!trashItem || trashItem.accountId !== accountId) {
@@ -44,10 +64,7 @@ const restoreItem = async (
     }
 
     const model = tx[prismaModelName] as unknown as {
-      update: (args: {
-        where: { id: string };
-        data: { isDeleted: boolean };
-      }) => Promise<unknown>;
+      update: (args: { where: { id: string }; data: { isDeleted: boolean } }) => Promise<unknown>;
     };
 
     await model.update({
@@ -79,4 +96,5 @@ export const TrashService = {
   getTrashByAccount,
   restoreItem,
   permanentDelete,
+  addToTrash,
 };
