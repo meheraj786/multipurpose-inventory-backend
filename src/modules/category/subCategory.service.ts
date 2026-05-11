@@ -1,6 +1,5 @@
 import type { SubCategory } from "@/generated/prisma/client.js";
-import { SystemModule, SystemAction } from "@/generated/prisma/client.js";
-import type { Prisma } from "@/generated/prisma/client.js";
+import { type Prisma, SystemAction} from "../../generated/prisma/index.js";
 import { prisma } from "@/config/database.js";
 import { TrashService } from "../trash/trash.service.js";
 import { ActivityLogService } from "../activityLog/activityLog.service.js";

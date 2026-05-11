@@ -1,4 +1,4 @@
-import { type Category, SystemAction, SystemModule } from "@prisma/client";
+import { type Category, SystemAction, SystemModule } from "../../generated/prisma/index.js";
 import prisma from "../../shared/utils/prisma.js";
 import type { CreateCategoryInput, UpdateCategoryInput } from "./category.validation.js";
 import type { Prisma } from "@/generated/prisma/client.js";
