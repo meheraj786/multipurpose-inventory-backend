@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "preinstall": "npx only-allow pnpm",
-    "dev": "tsx watch src/server.ts",
+    "dev": "tsx --watch --env-file=.env ./src/server.js",
     "build": "tsc",
     "start": "node dist/server.js",
     "test": "vitest",
@@ -42,6 +42,7 @@
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
+    "@types/http-status": "^1.1.2",
     "bcryptjs": "^3.0.2",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
@@ -49,6 +50,7 @@
     "express": "^5.2.1",
     "express-rate-limit": "^8.4.1",
     "helmet": "^8.1.0",
+    "http-status": "^2.1.0",
     "jsonwebtoken": "^9.0.2",
     "pino": "^10.3.1",
     "pino-http": "^11.0.0",

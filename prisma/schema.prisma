@@ -12,3 +12,85 @@ model User {
   email String  @unique
   name  String?
 }
+
+model Category {
+  id            String        @id @default(uuid())
+  name          String
+  description   String?
+  accountId     String
+  isDeleted     Boolean       @default(false)
+  subCategories SubCategory[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([accountId])
+}
+
+model SubCategory {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id])
+  accountId   String
+  isDeleted   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([accountId])
+  @@index([categoryId])
+}
+
+
+
+model Trash {
+  id         String       @id @default(uuid())
+  moduleName SystemModule 
+  itemName   String       
+  itemId     String       
+  deletedBy  String       
+  accountId  String       
+  date       DateTime     @default(now())
+
+  @@index([accountId])
+}
+
+model ActivityLog {
+  id        String       @id @default(uuid())
+  userId    String       
+  module    SystemModule 
+  action    SystemAction 
+  details   String?      
+  accountId String       
+  dateTime  DateTime     @default(now())
+
+  @@index([accountId])
+}
+
+
+enum SystemModule {
+  AUTH
+  USER
+  CATEGORY
+  SUBCATEGORY
+  PRODUCT
+  SUPPLIER
+  CUSTOMER
+  SALE
+  PURCHASE
+  INVENTORY
+  WASTE
+  TRASH
+  ACTIVITY_LOG
+}
+
+enum SystemAction {
+  CREATE
+  UPDATE
+  DELETE
+  RESTORE
+  LOGIN
+  LOGOUT
+  STOCK_IN
+  STOCK_OUT
+}

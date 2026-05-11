@@ -1,41 +1,26 @@
 import type { Response } from "express";
 
-interface ApiResponse<T> {
+type IApiResponse<T> = {
+  statusCode: number;
   success: boolean;
-  message?: string;
-  data?: T;
+  message?: string | null;
   meta?: {
-    page?: number;
-    limit?: number;
-    total?: number;
-    totalPages?: number;
-  };
-}
-
-export const sendSuccess = <T>(
-  res: Response,
-  data: T,
-  message = "Success",
-  statusCode = 200,
-  meta?: ApiResponse<T>["meta"],
-) => {
-  const response: ApiResponse<T> = {
-    success: true,
-    message,
-    data,
-  };
-
-  if (meta) {
-    response.meta = meta;
-  }
-
-  return res.status(statusCode).json(response);
+    page: number;
+    limit: number;
+    total: number;
+    totalPage?: number;
+  } | null;
+  data?: T | null;
 };
 
-export const sendCreated = <T>(res: Response, data: T, message = "Created successfully") => {
-  return sendSuccess(res, data, message, 201);
-};
+export const sendResponse = <T>(res: Response, data: IApiResponse<T>): void => {
+  const responseData: IApiResponse<T> = {
+    success: data.success,
+    statusCode: data.statusCode,
+    message: data.message || null,
+    meta: data.meta || null || undefined,
+    data: data.data || null || undefined,
+  };
 
-export const sendNoContent = (res: Response) => {
-  return res.status(204).send();
+  res.status(data.statusCode).json(responseData);
 };

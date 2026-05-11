@@ -7,6 +7,10 @@ import { errorHandler } from "./shared/middlewares/error.middleware.js";
 import { pinoHttp } from "pino-http";
 import { logger } from "./shared/utils/logger.js";
 import cookieParser from "cookie-parser";
+import { SubCategoryRoutes } from "./modules/category/subCategory.routes.js";
+import { CategoryRoutes } from "./modules/category/category.routes.js";
+import { TrashRoutes } from "./modules/trash/trash.route.js";
+import { ActivityLogRoutes } from "./modules/activityLog/activityLog.route.js";
 
 const app: Express = express();
 
@@ -46,6 +50,15 @@ app.use(
     },
   }),
 );
+
+app.use(cors());
+app.use(express.json());
+
+// API Routes
+app.use("/api/v1/categories", CategoryRoutes);
+app.use("/api/v1/sub-categories", SubCategoryRoutes);
+app.use("/api/v1/trash", TrashRoutes);
+app.use("/api/v1/activity-logs", ActivityLogRoutes);
 
 // Health check
 app.get(`/api/${env.API_VERSION}/health`, (_req, res) => {
