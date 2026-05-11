@@ -1,8 +1,4 @@
-import {
-  type Prisma,
-  SystemAction,
-  type SystemModule,
-} from "../../generated/prisma/index.js";
+import { type Prisma, SystemAction, type SystemModule } from "../../generated/prisma/index.js";
 import prisma from "../../shared/utils/prisma.js";
 import { ActivityLogService } from "../activityLog/activityLog.service.js";
 
@@ -37,11 +33,7 @@ const getTrashByAccount = async (accountId: string) => {
   });
 };
 
-const restoreItem = async (
-  trashId: string,
-  accountId: string,
-  userId: string,
-) => {
+const restoreItem = async (trashId: string, accountId: string, userId: string) => {
   return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const trashItem = await tx.trash.findUnique({ where: { id: trashId } });
     if (!trashItem || trashItem.accountId !== accountId) {
@@ -71,10 +63,7 @@ const restoreItem = async (
     }
 
     const model = tx[prismaModelName] as unknown as {
-      update: (args: {
-        where: { id: string };
-        data: { isDeleted: boolean };
-      }) => Promise<unknown>;
+      update: (args: { where: { id: string }; data: { isDeleted: boolean } }) => Promise<unknown>;
     };
 
     await model.update({
