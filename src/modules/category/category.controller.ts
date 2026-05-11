@@ -2,12 +2,10 @@ import type { Request, Response, NextFunction } from "express";
 import { CategoryService } from "./category.service.js";
 import { sendResponse } from "../../shared/utils/response.js";
 import httpStatus from "http-status";
-import { CategoryValidation } from "./category.validation.js";
 
 const createCategory = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const parsed = CategoryValidation.createCategoryZodSchema.parse(req.body);
-    const result = await CategoryService.createCategory(parsed.body);
+    const result = await CategoryService.createCategory(req.body);
 
     sendResponse(res, {
       statusCode: httpStatus.CREATED,
@@ -58,10 +56,9 @@ const getSingleCategory = async (req: Request, res: Response, next: NextFunction
 const updateCategory = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
-    const parsed = CategoryValidation.updateCategoryZodSchema.parse(req.body);
-    const accountId = parsed.body.accountId as string;
+    const accountId = req.body.accountId as string;
 
-    const result = await CategoryService.updateCategory(id, accountId as string, parsed.body);
+    const result = await CategoryService.updateCategory(id, accountId as string, req.body);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,

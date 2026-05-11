@@ -12,5 +12,14 @@ router.post(
 );
 
 router.get("/", SubCategoryController.getAllSubCategories);
+router.get("/:id", SubCategoryController.getSingleSubCategory);
+
+router.patch(
+  "/:id",
+  validateRequest(SubCategoryValidation.updateSubCategoryZodSchema),
+  SubCategoryController.updateSubCategory,
+);
+
+router.delete("/:id", SubCategoryController.deleteSubCategory);
 
 export const SubCategoryRoutes: Router = router;

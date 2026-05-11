@@ -1,15 +1,16 @@
 import type { SubCategory } from "@/generated/prisma/client.js";
-import type { CreateSubCategoryInput, UpdateSubCategoryInput } from "./subCategory.validation.js";
+import { SystemModule, SystemAction } from "@/generated/prisma/client.js";
+import type { Prisma } from "@/generated/prisma/client.js";
 import { prisma } from "@/config/database.js";
+import { TrashService } from "../trash/trash.service.js";
+import { ActivityLogService } from "../activityLog/activityLog.service.js";
+import type { CreateSubCategoryInput, UpdateSubCategoryInput } from "./subCategory.validation.js";
 
 const createSubCategory = async (data: CreateSubCategoryInput): Promise<SubCategory> => {
-  const result = await prisma.subCategory.create({
-    data,
-  });
-  return result;
+  return await prisma.subCategory.create({ data });
 };
 
-const getAllSubCategories = async (accountId: string): Promise<SubCategory[]> => {
+const getAllSubCategories = async (accountId: string) => {
   return await prisma.subCategory.findMany({
     where: {
       accountId,
@@ -18,6 +19,14 @@ const getAllSubCategories = async (accountId: string): Promise<SubCategory[]> =>
     include: {
       category: true,
     },
+    orderBy: { createdAt: "desc" },
+  });
+};
+
+const getSingleSubCategory = async (id: string, accountId: string) => {
+  return await prisma.subCategory.findFirst({
+    where: { id, accountId, isDeleted: false },
+    include: { category: true },
   });
 };
 
@@ -25,18 +34,50 @@ const updateSubCategory = async (
   id: string,
   accountId: string,
   payload: UpdateSubCategoryInput,
-): Promise<SubCategory | null> => {
+): Promise<SubCategory> => {
   return await prisma.subCategory.update({
-    where: {
-      id,
-      accountId,
-    },
+    where: { id, accountId },
     data: payload,
+  });
+};
+
+const deleteSubCategory = async (id: string, accountId: string, userId: string) => {
+  return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const subCategory = await tx.subCategory.findUnique({
+      where: { id, accountId },
+    });
+
+    if (!subCategory) throw new Error("Sub-category not found");
+
+    const result = await tx.subCategory.update({
+      where: { id, accountId },
+      data: { isDeleted: true },
+    });
+
+    await TrashService.addToTrash({
+      moduleName: SystemModule.SUBCATEGORY,
+      itemName: subCategory.name,
+      itemId: subCategory.id,
+      deletedBy: userId,
+      accountId,
+    });
+
+    await ActivityLogService.createLog({
+      userId,
+      module: SystemModule.SUBCATEGORY,
+      action: SystemAction.DELETE,
+      details: `Deleted sub-category: ${subCategory.name}`,
+      accountId,
+    });
+
+    return result;
   });
 };
 
 export const SubCategoryService = {
   createSubCategory,
   getAllSubCategories,
+  getSingleSubCategory,
   updateSubCategory,
+  deleteSubCategory,
 };
