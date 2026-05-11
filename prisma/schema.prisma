@@ -41,15 +41,13 @@ model SubCategory {
   @@index([categoryId])
 }
 
-
-
 model Trash {
   id         String       @id @default(uuid())
-  moduleName SystemModule 
-  itemName   String       
-  itemId     String       
-  deletedBy  String       
-  accountId  String       
+  moduleName SystemModule
+  itemName   String
+  itemId     String
+  deletedBy  String
+  accountId  String
   date       DateTime     @default(now())
 
   @@index([accountId])
@@ -57,16 +55,74 @@ model Trash {
 
 model ActivityLog {
   id        String       @id @default(uuid())
-  userId    String       
-  module    SystemModule 
-  action    SystemAction 
-  details   String?      
-  accountId String       
+  userId    String
+  module    SystemModule
+  action    SystemAction
+  details   String?
+  accountId String
   dateTime  DateTime     @default(now())
 
   @@index([accountId])
 }
 
+model Customer {
+  id            String   @id @default(uuid())
+  name          String
+  email         String?
+  phone         String
+  address       String?
+  hasMembership Boolean  @default(false)
+  isDeleted     Boolean  @default(false)
+  accountId     String
+  sales         Sale[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([accountId])
+  @@index([name])
+  @@index([phone])
+}
+
+model Sale {
+  id             String        @id @default(uuid())
+  productIds     String[]
+  customerId     String?
+  customer       Customer?     @relation(fields: [customerId], references: [id])
+  customerNumber String?
+  quantity       Int
+  paymentMethod  PaymentMethod
+  serviceId      String?
+  purchasePrice  Decimal
+  sellPrice      Decimal
+  featureNames   FeatureName[]
+  discount       Decimal?
+  due            Decimal?
+  invoices       Invoice[]
+  isDeleted      Boolean       @default(false)
+  accountId      String
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([accountId])
+  @@index([customerId])
+}
+
+model Invoice {
+  id          String        @id @default(uuid())
+  billTo      String
+  invoiceDate DateTime
+  saleId      String
+  sale        Sale          @relation(fields: [saleId], references: [id])
+  status      InvoiceStatus @default(PENDING)
+  grandTotal  Decimal
+  accountId   String
+  isDeleted   Boolean       @default(false)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([accountId])
+  @@index([saleId])
+}
 
 enum SystemModule {
   AUTH
@@ -82,6 +138,7 @@ enum SystemModule {
   WASTE
   TRASH
   ACTIVITY_LOG
+  INVOICE
 }
 
 enum SystemAction {
@@ -93,4 +150,24 @@ enum SystemAction {
   LOGOUT
   STOCK_IN
   STOCK_OUT
+}
+
+enum FeatureName {
+  RETAIL
+  SERVICE
+  RESTAURANT
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  MOBILE_BANKING
+  CREDIT
+}
+
+enum InvoiceStatus {
+  PENDING
+  PAID
+  PARTIALLY_PAID
+  CANCELLED
 }

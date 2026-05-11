@@ -9,8 +9,10 @@ import { logger } from "./shared/utils/logger.js";
 import cookieParser from "cookie-parser";
 import { SubCategoryRoutes } from "./modules/category/subCategory.routes.js";
 import { CategoryRoutes } from "./modules/category/category.routes.js";
-import { TrashRoutes } from "./modules/trash/trash.route.js";
+import { TrashRoutes } from "./modules/trash/trash.routes.js";
 import { ActivityLogRoutes } from "./modules/activityLog/activityLog.route.js";
+import { CustomerRoutes } from "./modules/customer/customer.routes.js";
+import { SaleRoutes } from "./modules/sale/sale.route.js";
 
 const app: Express = express();
 
@@ -59,6 +61,8 @@ app.use("/api/v1/categories", CategoryRoutes);
 app.use("/api/v1/sub-categories", SubCategoryRoutes);
 app.use("/api/v1/trash", TrashRoutes);
 app.use("/api/v1/activity-logs", ActivityLogRoutes);
+app.use("/customers", CustomerRoutes);
+app.use("/sales", SaleRoutes);
 
 // Health check
 app.get(`/api/${env.API_VERSION}/health`, (_req, res) => {
