@@ -57,10 +57,7 @@ const restoreItem = async (trashId: string, accountId: string, userId: string) =
     }
 
     const model = tx[prismaModelName] as unknown as {
-      update: (args: {
-        where: { id: string };
-        data: { isDeleted: boolean };
-      }) => Promise<unknown>;
+      update: (args: { where: { id: string }; data: { isDeleted: boolean } }) => Promise<unknown>;
     };
 
     await model.update({

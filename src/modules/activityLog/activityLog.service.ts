@@ -1,4 +1,4 @@
-import { ILogPayload } from "@/shared/shared.validation.js";
+import type { ILogPayload } from "@/shared/shared.validation.js";
 import type { ActivityLog } from "../../generated/prisma/index.js";
 import prisma from "../../shared/utils/prisma.js";
 

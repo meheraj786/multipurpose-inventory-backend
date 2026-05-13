@@ -1,11 +1,7 @@
 import bcrypt from "bcrypt";
 import prisma from "../../shared/utils/prisma.js";
 import type { LoginInput, RegisterInput } from "./auth.validation.js";
-import {
-  generateAccessToken,
-  generateRefreshToken,
-  verifyRefreshToken,
-} from "./auth.utils.js";
+import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from "./auth.utils.js";
 
 const register = async (data: RegisterInput) => {
   const existing = await prisma.user.findUnique({ where: { email: data.email } });
