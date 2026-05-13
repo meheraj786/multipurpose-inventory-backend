@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "preinstall": "npx only-allow pnpm",
-    "dev": "tsx --watch --env-file=.env ./src/server.js",
+    "dev": "tsx --watch --env-file=.env ./src/server.ts",
     "test": "vitest",
     "test:coverage": "vitest --coverage",
     "lint": "biome check .",
@@ -21,7 +21,7 @@
     "prepare": "prisma generate",
     "postinstall": "prisma generate",
     "build": "prisma generate && tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/server.js"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

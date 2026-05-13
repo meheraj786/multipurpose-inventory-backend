@@ -2,7 +2,7 @@ import type { NextFunction, Request, Response } from "express";
 import httpStatus from "http-status";
 import { sendResponse } from "../../shared/utils/response.js";
 import { AuthService } from "./auth.service.js";
-import { clearRefreshTokenCookie, setRefreshTokenCookie } from "./auth.utils.js";
+import { clearAuthCookies, setAccessTokenCookie, setRefreshTokenCookie } from "./auth.utils.js";
 
 const register = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -23,13 +23,14 @@ const login = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { accessToken, refreshToken, user } = await AuthService.login(req.body);
 
+    setAccessTokenCookie(res, accessToken);
     setRefreshTokenCookie(res, refreshToken);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,
       message: "Login successful",
-      data: { accessToken, user },
+      data: { user },
     });
   } catch (error) {
     next(error);
@@ -43,13 +44,14 @@ const refresh = async (req: Request, res: Response, next: NextFunction) => {
 
     const { accessToken, refreshToken } = await AuthService.refreshToken(token);
 
+    setAccessTokenCookie(res, accessToken);
     setRefreshTokenCookie(res, refreshToken);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,
       message: "Token refreshed",
-      data: { accessToken },
+      data: null,
     });
   } catch (error) {
     next(error);
@@ -58,7 +60,7 @@ const refresh = async (req: Request, res: Response, next: NextFunction) => {
 
 const logout = async (_req: Request, res: Response, next: NextFunction) => {
   try {
-    clearRefreshTokenCookie(res);
+    clearAuthCookies(res);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,

@@ -32,19 +32,30 @@ export const verifyRefreshToken = (token: string): JwtPayload => {
   return jwt.verify(token, REFRESH_SECRET) as unknown as JwtPayload;
 };
 
+export const setAccessTokenCookie = (res: import("express").Response, token: string) => {
+  res.cookie("accessToken", token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    maxAge: 15 * 60 * 1000, // 15 minutes
+  });
+};
+
 export const setRefreshTokenCookie = (res: import("express").Response, token: string) => {
   res.cookie("refreshToken", token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "strict",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   });
 };
 
-export const clearRefreshTokenCookie = (res: import("express").Response) => {
-  res.clearCookie("refreshToken", {
+export const clearAuthCookies = (res: import("express").Response) => {
+  const cookieOptions = {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-  });
+    sameSite: "strict" as const,
+  };
+  res.clearCookie("accessToken", cookieOptions);
+  res.clearCookie("refreshToken", cookieOptions);
 };

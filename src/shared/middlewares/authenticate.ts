@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import { verifyAccessToken } from "../../modules/auth/auth.utils.js";
 import type { JwtPayload } from "../../modules/auth/auth.utils.js";
+import prisma from "../utils/prisma.js";
 
 declare global {
   namespace Express {
@@ -10,17 +11,36 @@ declare global {
   }
 }
 
-export const authenticate = (req: Request, res: Response, next: NextFunction) => {
+export const authenticate = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader?.startsWith("Bearer ")) {
+    // Read access token from cookie
+    const token = req.cookies?.accessToken;
+
+    if (!token) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    const token = authHeader.split(" ")[1];
     const decoded = verifyAccessToken(token);
-    req.user = decoded;
 
+    // DEVELOPER has no accountId — skip account check
+    if (decoded.role !== "DEVELOPER") {
+      const account = await prisma.account.findFirst({
+        where: { id: decoded.accountId ?? "", isDeleted: false },
+      });
+
+      if (!account) {
+        return res.status(403).json({ success: false, message: "Account not found" });
+      }
+
+      if (account.status !== "ACTIVE") {
+        return res.status(403).json({
+          success: false,
+          message: `Account is ${account.status.toLowerCase()}`,
+        });
+      }
+    }
+
+    req.user = decoded;
     next();
   } catch {
     return res.status(401).json({ success: false, message: "Invalid or expired token" });
