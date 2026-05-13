@@ -13,6 +13,10 @@ import { TrashRoutes } from "./modules/trash/trash.routes.js";
 import { ActivityLogRoutes } from "./modules/activityLog/activityLog.route.js";
 import { CustomerRoutes } from "./modules/customer/customer.routes.js";
 import { SaleRoutes } from "./modules/sale/sale.route.js";
+import { AuthRoutes } from "./modules/auth/auth.routes.js";
+import { InvoiceRoutes } from "./modules/invoice/invoice.routes.js";
+import { StaffRoutes } from "./modules/staff/staff.routes.js";
+import { PricingPlanRoutes } from "./modules/pricingPlan/pricingPlan.routes.js";
 
 const app: Express = express();
 
@@ -57,12 +61,16 @@ app.use(cors());
 app.use(express.json());
 
 // API Routes
+app.use("/api/v1/auth", AuthRoutes);
 app.use("/api/v1/categories", CategoryRoutes);
 app.use("/api/v1/sub-categories", SubCategoryRoutes);
+app.use("/api/v1/customers", CustomerRoutes);
+app.use("/api/v1/sales", SaleRoutes);
+app.use("/api/v1/invoices", InvoiceRoutes);
 app.use("/api/v1/trash", TrashRoutes);
 app.use("/api/v1/activity-logs", ActivityLogRoutes);
-app.use("/customers", CustomerRoutes);
-app.use("/sales", SaleRoutes);
+app.use("/api/v1/staff", StaffRoutes);
+app.use("/api/v1/pricing-plans", PricingPlanRoutes);
 
 // Health check
 app.get(`/api/${env.API_VERSION}/health`, (_req, res) => {

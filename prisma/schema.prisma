@@ -7,11 +7,83 @@ datasource db {
   provider = "postgresql"
 }
 
+// ==================== AUTH ====================
+
 model User {
-  id    Int     @id @default(autoincrement())
-  email String  @unique
-  name  String?
+  id          String       @id @default(uuid())
+  accountId   String?
+  account     Account?     @relation(fields: [accountId], references: [id])
+  email       String       @unique
+  password    String
+  role        UserRole     @default(STAFF)
+  isDeleted   Boolean      @default(false)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  permissions Permission[]
+
+  @@index([accountId])
+  @@index([email])
 }
+
+model Account {
+  id               String       @id @default(uuid())
+  companyName      String
+  category         String
+  type             String
+  model            AccountModel
+  logo             String?
+  pricingPlanId    String?
+  pricingPlan      PricingPlan? @relation(fields: [pricingPlanId], references: [id])
+  saleIdPrefix     String?
+  footerNotes      String?
+  digitalSignature String?
+  subsDate         DateTime?
+  subsExpiryDate   DateTime?
+  currency         Currency     @default(USD)
+  status           AccountStatus @default(ACTIVE)
+  isDeleted        Boolean      @default(false)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  users            User[]
+
+  @@index([pricingPlanId])
+}
+
+model Permission {
+  id        String         @id @default(uuid())
+  userId    String
+  user      User           @relation(fields: [userId], references: [id])
+  accountId String
+  module    SystemModule
+  actions   SystemAction[]
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@unique([userId, module])
+  @@index([accountId])
+  @@index([userId])
+}
+
+// ==================== SYSTEM ====================
+
+model PricingPlan {
+  id             String         @id @default(uuid())
+  name           String         @unique
+  description    String?
+  monthlyPrice   Decimal
+  yearlyPrice    Decimal
+  features       String[]
+  allowedModules SystemModule[]
+  userLimit      Int?           // null = unlimited
+  isActive       Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  accounts       Account[]
+
+  @@index([isActive])
+}
+
+// ==================== CORE ====================
 
 model Category {
   id            String        @id @default(uuid())
@@ -39,30 +111,6 @@ model SubCategory {
 
   @@index([accountId])
   @@index([categoryId])
-}
-
-model Trash {
-  id         String       @id @default(uuid())
-  moduleName SystemModule
-  itemName   String
-  itemId     String
-  deletedBy  String
-  accountId  String
-  date       DateTime     @default(now())
-
-  @@index([accountId])
-}
-
-model ActivityLog {
-  id        String       @id @default(uuid())
-  userId    String
-  module    SystemModule
-  action    SystemAction
-  details   String?
-  accountId String
-  dateTime  DateTime     @default(now())
-
-  @@index([accountId])
 }
 
 model Customer {
@@ -124,9 +172,61 @@ model Invoice {
   @@index([saleId])
 }
 
+model Trash {
+  id         String       @id @default(uuid())
+  moduleName SystemModule
+  itemName   String
+  itemId     String
+  deletedBy  String
+  accountId  String
+  date       DateTime     @default(now())
+
+  @@index([accountId])
+}
+
+model ActivityLog {
+  id        String       @id @default(uuid())
+  userId    String
+  module    SystemModule
+  action    SystemAction
+  details   String?
+  accountId String
+  dateTime  DateTime     @default(now())
+
+  @@index([accountId])
+}
+
+// ==================== ENUMS ====================
+
+enum UserRole {
+  DEVELOPER
+  ADMIN
+  STAFF
+}
+
+enum AccountStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum AccountModel {
+  RETAIL
+  SERVICE
+  RESTAURANT
+}
+
+enum Currency {
+  USD
+  BDT
+  EUR
+  GBP
+}
+
 enum SystemModule {
   AUTH
   USER
+  ACCOUNT
   CATEGORY
   SUBCATEGORY
   PRODUCT
@@ -139,10 +239,13 @@ enum SystemModule {
   TRASH
   ACTIVITY_LOG
   INVOICE
+  PERMISSION
+  PRICING_PLAN
 }
 
 enum SystemAction {
   CREATE
+  READ
   UPDATE
   DELETE
   RESTORE
