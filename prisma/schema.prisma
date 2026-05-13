@@ -1,6 +1,7 @@
 generator client {
-  provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
+  provider      = "prisma-client-js"
+  output        = "../src/generated/prisma"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
@@ -26,24 +27,24 @@ model User {
 }
 
 model Account {
-  id               String       @id @default(uuid())
+  id               String        @id @default(uuid())
   companyName      String
   category         String
   type             String
   model            AccountModel
   logo             String?
   pricingPlanId    String?
-  pricingPlan      PricingPlan? @relation(fields: [pricingPlanId], references: [id])
+  pricingPlan      PricingPlan?  @relation(fields: [pricingPlanId], references: [id])
   saleIdPrefix     String?
   footerNotes      String?
   digitalSignature String?
   subsDate         DateTime?
   subsExpiryDate   DateTime?
-  currency         Currency     @default(USD)
+  currency         Currency      @default(USD)
   status           AccountStatus @default(ACTIVE)
-  isDeleted        Boolean      @default(false)
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+  isDeleted        Boolean       @default(false)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
   users            User[]
 
   @@index([pricingPlanId])
@@ -74,7 +75,7 @@ model PricingPlan {
   yearlyPrice    Decimal
   features       String[]
   allowedModules SystemModule[]
-  userLimit      Int?           // null = unlimited
+  userLimit      Int? // null = unlimited
   isActive       Boolean        @default(true)
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
