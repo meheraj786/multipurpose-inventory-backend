@@ -16,13 +16,7 @@ const addToTrash = async ({
   accountId: string;
 }) => {
   return await prisma.trash.create({
-    data: {
-      moduleName,
-      itemName,
-      itemId,
-      deletedBy,
-      accountId,
-    },
+    data: { moduleName, itemName, itemId, deletedBy, accountId },
   });
 };
 
@@ -40,30 +34,33 @@ const restoreItem = async (trashId: string, accountId: string, userId: string) =
       throw new Error("Item not found in trash");
     }
 
-    const modelMap: Record<SystemModule, keyof Prisma.TransactionClient> = {
+    // Only map models that actually exist in the schema
+    const modelMap: Partial<Record<SystemModule, keyof Prisma.TransactionClient>> = {
       USER: "user",
+      ACCOUNT: "account",
       CATEGORY: "category",
       SUBCATEGORY: "subCategory",
-      PRODUCT: "product",
-      SUPPLIER: "supplier",
       CUSTOMER: "customer",
       SALE: "sale",
-      PURCHASE: "purchase",
-      INVENTORY: "inventory",
-      WASTE: "waste",
-      TRASH: "trash",
-      ACTIVITY_LOG: "activityLog",
+      INVOICE: "invoice",
+      PERMISSION: "permission",
       AUTH: "user",
-    } as const;
+      // PRODUCT, SUPPLIER, PURCHASE, INVENTORY, WASTE — add when those modules are built
+    };
 
     const prismaModelName = modelMap[trashItem.moduleName];
 
     if (!prismaModelName) {
-      throw new Error(`No model mapping found for: ${trashItem.moduleName}`);
+      throw new Error(
+        `No model mapping found for: ${trashItem.moduleName} — module may not exist yet`,
+      );
     }
 
     const model = tx[prismaModelName] as unknown as {
-      update: (args: { where: { id: string }; data: { isDeleted: boolean } }) => Promise<unknown>;
+      update: (args: {
+        where: { id: string };
+        data: { isDeleted: boolean };
+      }) => Promise<unknown>;
     };
 
     await model.update({
@@ -92,8 +89,8 @@ const permanentDelete = async (trashId: string, accountId: string) => {
 };
 
 export const TrashService = {
+  addToTrash,
   getTrashByAccount,
   restoreItem,
   permanentDelete,
-  addToTrash,
 };

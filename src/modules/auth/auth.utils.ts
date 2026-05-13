@@ -13,19 +13,23 @@ export type JwtPayload = {
 };
 
 export const generateAccessToken = (payload: JwtPayload): string => {
+  if (!ACCESS_SECRET) throw new Error("JWT_ACCESS_SECRET is not defined");
   return jwt.sign(payload, ACCESS_SECRET, { expiresIn: ACCESS_EXPIRES } as jwt.SignOptions);
 };
 
 export const generateRefreshToken = (payload: JwtPayload): string => {
+  if (!REFRESH_SECRET) throw new Error("JWT_REFRESH_SECRET is not defined");
   return jwt.sign(payload, REFRESH_SECRET, { expiresIn: REFRESH_EXPIRES } as jwt.SignOptions);
 };
 
 export const verifyAccessToken = (token: string): JwtPayload => {
-  return jwt.verify(token, ACCESS_SECRET) as JwtPayload;
+  if (!ACCESS_SECRET) throw new Error("JWT_ACCESS_SECRET is not defined");
+  return jwt.verify(token, ACCESS_SECRET) as unknown as JwtPayload;
 };
 
 export const verifyRefreshToken = (token: string): JwtPayload => {
-  return jwt.verify(token, REFRESH_SECRET) as JwtPayload;
+  if (!REFRESH_SECRET) throw new Error("JWT_REFRESH_SECRET is not defined");
+  return jwt.verify(token, REFRESH_SECRET) as unknown as JwtPayload;
 };
 
 export const setRefreshTokenCookie = (res: import("express").Response, token: string) => {

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { SystemModule, SystemAction } from "../generated/prisma/enums.js";
+import { SystemModule, SystemAction } from "../generated/prisma/index.js";
 
 export const createActivityLogZodSchema = z.object({
   body: z.object({

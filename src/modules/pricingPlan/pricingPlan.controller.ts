@@ -24,7 +24,8 @@ const getAllPricingPlans = async (req: Request, res: Response, next: NextFunctio
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
     const search = req.query.search as string | undefined;
-    const isActive = req.query.isActive !== undefined ? req.query.isActive === "true" : undefined;
+    const isActive =
+      req.query.isActive !== undefined ? req.query.isActive === "true" : undefined;
 
     const result = await PricingPlanService.getAllPricingPlans(page, limit, search, isActive);
 
@@ -42,7 +43,8 @@ const getAllPricingPlans = async (req: Request, res: Response, next: NextFunctio
 
 const getSinglePricingPlan = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const result = await PricingPlanService.getSinglePricingPlan(req.params.id);
+    const id = req.params.id as string;
+    const result = await PricingPlanService.getSinglePricingPlan(id);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -57,12 +59,9 @@ const getSinglePricingPlan = async (req: Request, res: Response, next: NextFunct
 
 const updatePricingPlan = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const id = req.params.id as string;
     const developerUserId = req.user?.userId as string;
-    const result = await PricingPlanService.updatePricingPlan(
-      req.params.id,
-      req.body,
-      developerUserId,
-    );
+    const result = await PricingPlanService.updatePricingPlan(id, req.body, developerUserId);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -77,8 +76,9 @@ const updatePricingPlan = async (req: Request, res: Response, next: NextFunction
 
 const toggleActive = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const id = req.params.id as string;
     const developerUserId = req.user?.userId as string;
-    const result = await PricingPlanService.toggleActive(req.params.id, developerUserId);
+    const result = await PricingPlanService.toggleActive(id, developerUserId);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -93,8 +93,9 @@ const toggleActive = async (req: Request, res: Response, next: NextFunction) => 
 
 const deletePricingPlan = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const id = req.params.id as string;
     const developerUserId = req.user?.userId as string;
-    const result = await PricingPlanService.deletePricingPlan(req.params.id, developerUserId);
+    const result = await PricingPlanService.deletePricingPlan(id, developerUserId);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,

@@ -1,7 +1,11 @@
 import bcrypt from "bcrypt";
 import prisma from "../../shared/utils/prisma.js";
 import type { LoginInput, RegisterInput } from "./auth.validation.js";
-import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from "./auth.utils.js";
+import {
+  generateAccessToken,
+  generateRefreshToken,
+  verifyRefreshToken,
+} from "./auth.utils.js";
 
 const register = async (data: RegisterInput) => {
   const existing = await prisma.user.findUnique({ where: { email: data.email } });
@@ -10,22 +14,23 @@ const register = async (data: RegisterInput) => {
   const hashedPassword = await bcrypt.hash(data.password, 12);
 
   const user = await prisma.$transaction(async (tx) => {
-    const newUser = await tx.user.create({
+    // Create account first — User.accountId is the FK
+    const newAccount = await tx.account.create({
       data: {
-        email: data.email,
-        password: hashedPassword,
-        role: "ADMIN",
-      },
-    });
-
-    await tx.account.create({
-      data: {
-        userId: newUser.id,
         companyName: data.companyName,
         category: data.category,
         type: data.type,
         model: data.model,
         currency: data.currency,
+      },
+    });
+
+    const newUser = await tx.user.create({
+      data: {
+        email: data.email,
+        password: hashedPassword,
+        role: "ADMIN",
+        accountId: newAccount.id,
       },
     });
 
@@ -52,7 +57,7 @@ const login = async (data: LoginInput) => {
 
   const payload = {
     userId: user.id,
-    accountId: user.account?.id ?? null,
+    accountId: user.accountId ?? null,
     role: user.role,
     email: user.email,
   };
@@ -75,7 +80,7 @@ const refreshToken = async (token: string) => {
 
   const payload = {
     userId: user.id,
-    accountId: user.account?.id ?? null,
+    accountId: user.accountId ?? null,
     role: user.role,
     email: user.email,
   };

@@ -1,19 +1,23 @@
-import type { ActivityLog } from "../../generated/prisma/client.js";
-// import {_SystemModule, _SystemAction} from "../../generated/prisma/enums.js";
+import { ILogPayload } from "@/shared/shared.validation.js";
+import type { ActivityLog } from "../../generated/prisma/index.js";
 import prisma from "../../shared/utils/prisma.js";
-import type { ILogPayload } from "@/shared/shared.validation.js";
 
 const createLog = async (data: ILogPayload): Promise<ActivityLog> => {
   return await prisma.activityLog.create({
-    data,
+    data: {
+      userId: data.userId,
+      module: data.module,
+      action: data.action,
+      details: data.details,
+      accountId: data.accountId,
+    },
   });
 };
 
 const getLogsByAccount = async (accountId: string): Promise<ActivityLog[]> => {
   return await prisma.activityLog.findMany({
-    where: {
-      accountId,
-    },
+    where: { accountId },
+    orderBy: { dateTime: "desc" },
   });
 };
 
