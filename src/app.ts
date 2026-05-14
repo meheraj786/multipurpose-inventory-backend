@@ -39,8 +39,7 @@ app.use(cookieParser());
 app.use(
   pinoHttp({
     logger,
-    customSuccessMessage: (req, res) =>
-      `${req.method} ${req.url} ${res.statusCode}`,
+    customSuccessMessage: (req, res) => `${req.method} ${req.url} ${res.statusCode}`,
     customErrorMessage: (req, res, err) =>
       `${req.method} ${req.url} ${res.statusCode} - ${err.message}`,
     customLogLevel: (_req, res, err) => {
