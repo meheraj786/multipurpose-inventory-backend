@@ -20,47 +20,49 @@ import { PricingPlanRoutes } from "./modules/pricingPlan/pricingPlan.routes.js";
 
 const app: Express = express();
 
-// Security middleware
+// ==================== SECURITY ====================
 app.use(helmet());
+// app.ts
 app.use(
   cors({
-    origin: "*",
+    origin: env.FRONTEND_URL,
+    credentials: true,
   }),
 );
-console.log("hello world");
-// Body parsing
+
+// ==================== BODY PARSING ====================
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// Logging
+// ==================== LOGGING ====================
 app.use(
   pinoHttp({
     logger,
-
-    // The exact, simple format: "GET /api/inventory/restock 200"
-    customSuccessMessage: (req, res) => {
-      return `${req.method} ${req.url} ${res.statusCode}`;
-    },
-
-    // Same thing for errors, but tacks on the error reason
-    customErrorMessage: (req, res, err) => {
-      return `${req.method} ${req.url} ${res.statusCode} - ${err.message}`;
-    },
-
-    // Keeps the colors color-coded by success/fail
+    customSuccessMessage: (req, res) =>
+      `${req.method} ${req.url} ${res.statusCode}`,
+    customErrorMessage: (req, res, err) =>
+      `${req.method} ${req.url} ${res.statusCode} - ${err.message}`,
     customLogLevel: (_req, res, err) => {
       if (res.statusCode >= 500 || err) return "error";
-      if (res.statusCode >= 400 && res.statusCode < 500) return "warn";
+      if (res.statusCode >= 400) return "warn";
       return "info";
     },
   }),
 );
 
-app.use(cors());
-app.use(express.json());
+// ==================== HEALTH CHECK ====================
+// Must be before other routes — this is what UptimeRobot will ping
+app.get("/api/v1/health", (_req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "MP Inventory API is running",
+    timestamp: new Date().toISOString(),
+    environment: env.NODE_ENV,
+  });
+});
 
-// API Routes
+// ==================== API ROUTES ====================
 app.use("/api/v1/auth", AuthRoutes);
 app.use("/api/v1/categories", CategoryRoutes);
 app.use("/api/v1/sub-categories", SubCategoryRoutes);
@@ -72,17 +74,7 @@ app.use("/api/v1/activity-logs", ActivityLogRoutes);
 app.use("/api/v1/staff", StaffRoutes);
 app.use("/api/v1/pricing-plans", PricingPlanRoutes);
 
-// Health check
-app.get(`/api/${env.API_VERSION}/health`, (_req, res) => {
-  res.status(200).json({
-    success: true,
-    message: "MP Inventory API is running",
-    timestamp: new Date().toISOString(),
-    environment: env.NODE_ENV,
-  });
-});
-
-// Error handling
+// ==================== ERROR HANDLING ====================
 app.use(notFoundHandler);
 app.use(errorHandler);
 
