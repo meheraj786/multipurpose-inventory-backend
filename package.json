@@ -20,8 +20,8 @@
     "db:studio": "prisma studio",
     "prepare": "prisma generate",
     "postinstall": "prisma generate",
-    "build": "prisma generate && tsc && tsc-alias",
-    "start": "node dist/server.js"
+    "build": "prisma generate && tsc && npx tsc-alias && ls -la dist",
+    "start": "node --loader tsx ./src/server.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
