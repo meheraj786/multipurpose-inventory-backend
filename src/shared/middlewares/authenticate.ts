@@ -22,7 +22,6 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
 
     const decoded = verifyAccessToken(token);
 
-    // DEVELOPER has no accountId — skip account check
     if (decoded.role !== "DEVELOPER") {
       const account = await prisma.account.findFirst({
         where: { id: decoded.accountId ?? "", isDeleted: false },
