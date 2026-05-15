@@ -22,11 +22,7 @@ const restoreItem = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const { accountId, userId } = req.body;
-    const result = await TrashService.restoreItem(
-      id as string,
-      accountId,
-      userId,
-    );
+    const result = await TrashService.restoreItem(id as string, accountId, userId);
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,

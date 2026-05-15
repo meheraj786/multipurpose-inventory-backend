@@ -3,11 +3,7 @@ import httpStatus from "http-status";
 import { sendResponse } from "../../shared/utils/response.js";
 import { CustomerService } from "./customer.service.js";
 
-const createCustomer = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const createCustomer = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const result = await CustomerService.createCustomer(req.body);
 
@@ -22,23 +18,14 @@ const createCustomer = async (
   }
 };
 
-const getAllCustomers = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const getAllCustomers = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const accountId = req.user.accountId as string;
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
     const search = req.query.search as string | undefined;
 
-    const result = await CustomerService.getAllCustomers(
-      accountId,
-      page,
-      limit,
-      search,
-    );
+    const result = await CustomerService.getAllCustomers(accountId, page, limit, search);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -52,11 +39,7 @@ const getAllCustomers = async (
   }
 };
 
-const getSingleCustomer = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const getSingleCustomer = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
     const accountId = req.user.accountId as string;
@@ -74,11 +57,7 @@ const getSingleCustomer = async (
   }
 };
 
-const updateCustomer = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const updateCustomer = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
     const { accountId, ...rest } = req.body;
@@ -96,11 +75,7 @@ const updateCustomer = async (
   }
 };
 
-const deleteCustomer = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const deleteCustomer = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
     const accountId = req.user.accountId as string;

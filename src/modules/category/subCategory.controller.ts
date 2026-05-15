@@ -3,11 +3,7 @@ import { sendResponse } from "../../shared/utils/response.js";
 import httpStatus from "http-status";
 import { SubCategoryService } from "./subCategory.service.js";
 
-const createSubCategory = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const createSubCategory = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const result = await SubCategoryService.createSubCategory(req.body);
 
@@ -22,11 +18,7 @@ const createSubCategory = async (
   }
 };
 
-const getAllSubCategories = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const getAllSubCategories = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const accountId = req.user.accountId as string;
     const result = await SubCategoryService.getAllSubCategories(accountId);
@@ -42,11 +34,7 @@ const getAllSubCategories = async (
   }
 };
 
-const getSingleSubCategory = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const getSingleSubCategory = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
     const accountId = req.user.accountId as string;
@@ -64,20 +52,12 @@ const getSingleSubCategory = async (
   }
 };
 
-const updateSubCategory = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const updateSubCategory = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
     const accountId = req.user.accountId as string;
 
-    const result = await SubCategoryService.updateSubCategory(
-      id,
-      accountId,
-      req.body,
-    );
+    const result = await SubCategoryService.updateSubCategory(id, accountId, req.body);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -90,20 +70,12 @@ const updateSubCategory = async (
   }
 };
 
-const deleteSubCategory = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const deleteSubCategory = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
     const { accountId, userId } = req.body;
 
-    const result = await SubCategoryService.deleteSubCategory(
-      id,
-      accountId,
-      userId,
-    );
+    const result = await SubCategoryService.deleteSubCategory(id, accountId, userId);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
