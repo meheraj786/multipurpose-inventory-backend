@@ -6,9 +6,7 @@ import httpStatus from "http-status";
 const getLogs = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { accountId } = req.body;
-    const result = await ActivityLogService.getLogsByAccount(
-      accountId as string,
-    );
+    const result = await ActivityLogService.getLogsByAccount(accountId as string);
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,
