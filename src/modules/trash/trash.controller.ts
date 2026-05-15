@@ -5,7 +5,7 @@ import httpStatus from "http-status";
 
 const getTrash = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { accountId } = req.body;
+    const { accountId } = req.user;
     const result = await TrashService.getTrashByAccount(accountId as string);
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -22,7 +22,11 @@ const restoreItem = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const { accountId, userId } = req.body;
-    const result = await TrashService.restoreItem(id as string, accountId, userId);
+    const result = await TrashService.restoreItem(
+      id as string,
+      accountId,
+      userId,
+    );
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,

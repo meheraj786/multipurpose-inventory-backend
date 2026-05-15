@@ -3,7 +3,11 @@ import { CategoryService } from "./category.service.js";
 import { sendResponse } from "../../shared/utils/response.js";
 import httpStatus from "http-status";
 
-const createCategory = async (req: Request, res: Response, next: NextFunction) => {
+const createCategory = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const result = await CategoryService.createCategory(req.body);
 
@@ -18,9 +22,13 @@ const createCategory = async (req: Request, res: Response, next: NextFunction) =
   }
 };
 
-const getAllCategories = async (req: Request, res: Response, next: NextFunction) => {
+const getAllCategories = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
-    const accountId = req.body.accountId as string;
+    const accountId = req.user.accountId as string;
 
     const result = await CategoryService.getAllCategories(accountId);
 
@@ -35,10 +43,14 @@ const getAllCategories = async (req: Request, res: Response, next: NextFunction)
   }
 };
 
-const getSingleCategory = async (req: Request, res: Response, next: NextFunction) => {
+const getSingleCategory = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const id = req.params.id as string;
-    const accountId = req.body.accountId as string;
+    const accountId = req.user.accountId as string;
 
     const result = await CategoryService.getSingleCategory(id, accountId);
 
@@ -53,12 +65,20 @@ const getSingleCategory = async (req: Request, res: Response, next: NextFunction
   }
 };
 
-const updateCategory = async (req: Request, res: Response, next: NextFunction) => {
+const updateCategory = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const id = req.params.id as string;
-    const accountId = req.body.accountId as string;
+    const accountId = req.user.accountId as string;
 
-    const result = await CategoryService.updateCategory(id, accountId as string, req.body);
+    const result = await CategoryService.updateCategory(
+      id,
+      accountId as string,
+      req.body,
+    );
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -71,10 +91,14 @@ const updateCategory = async (req: Request, res: Response, next: NextFunction) =
   }
 };
 
-const deleteCategory = async (req: Request, res: Response, next: NextFunction) => {
+const deleteCategory = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const id = req.params.id as string;
-    const accountId = req.body.accountId as string;
+    const accountId = req.user.accountId as string;
     const userId = req.body.userId as string;
 
     const result = await CategoryService.deleteCategory(id, accountId, userId);

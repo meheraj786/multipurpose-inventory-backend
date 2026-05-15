@@ -9,7 +9,8 @@ const createSale = async (req: Request, res: Response, next: NextFunction) => {
     const sale = await SaleService.createSale(req.body);
 
     await InvoiceService.createInvoice({
-      billTo: req.body.customerNumber ?? req.body.customerId ?? "Walk-in Customer",
+      billTo:
+        req.body.customerNumber ?? req.body.customerId ?? "Walk-in Customer",
       invoiceDate: new Date().toISOString(),
       saleId: sale.id,
       status: "PENDING",
@@ -30,12 +31,17 @@ const createSale = async (req: Request, res: Response, next: NextFunction) => {
 
 const getAllSales = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const accountId = req.body.accountId as string;
+    const accountId = req.user.accountId as string;
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
     const search = req.query.search as string | undefined;
 
-    const result = await SaleService.getAllSales(accountId, page, limit, search);
+    const result = await SaleService.getAllSales(
+      accountId,
+      page,
+      limit,
+      search,
+    );
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -49,10 +55,14 @@ const getAllSales = async (req: Request, res: Response, next: NextFunction) => {
   }
 };
 
-const getSingleSale = async (req: Request, res: Response, next: NextFunction) => {
+const getSingleSale = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const id = req.params.id as string;
-    const accountId = req.body.accountId as string;
+    const accountId = req.user.accountId as string;
 
     const result = await SaleService.getSingleSale(id, accountId);
 
@@ -88,7 +98,7 @@ const updateSale = async (req: Request, res: Response, next: NextFunction) => {
 const deleteSale = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
-    const accountId = req.body.accountId as string;
+    const accountId = req.user.accountId as string;
     const userId = req.body.userId as string;
 
     const result = await SaleService.deleteSale(id, accountId, userId);
