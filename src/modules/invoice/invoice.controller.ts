@@ -3,11 +3,7 @@ import httpStatus from "http-status";
 import { sendResponse } from "../../shared/utils/response.js";
 import { InvoiceService } from "./invoice.service.js";
 
-const createInvoice = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const createInvoice = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const result = await InvoiceService.createInvoice(req.body);
 
@@ -22,11 +18,7 @@ const createInvoice = async (
   }
 };
 
-const getAllInvoices = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const getAllInvoices = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const accountId = req.body.accountId as string;
     const page = parseInt(req.query.page as string) || 1;
@@ -34,13 +26,7 @@ const getAllInvoices = async (
     const search = req.query.search as string | undefined;
     const status = req.query.status as string | undefined;
 
-    const result = await InvoiceService.getAllInvoices(
-      accountId,
-      page,
-      limit,
-      search,
-      status,
-    );
+    const result = await InvoiceService.getAllInvoices(accountId, page, limit, search, status);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -54,11 +40,7 @@ const getAllInvoices = async (
   }
 };
 
-const getSingleInvoice = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const getSingleInvoice = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
     const accountId = req.body.accountId as string;
@@ -76,11 +58,7 @@ const getSingleInvoice = async (
   }
 };
 
-const updateInvoice = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const updateInvoice = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
     const { accountId, ...rest } = req.body;
@@ -98,11 +76,7 @@ const updateInvoice = async (
   }
 };
 
-const deleteInvoice = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const deleteInvoice = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
     const accountId = req.body.accountId as string;
