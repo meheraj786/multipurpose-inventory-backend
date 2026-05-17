@@ -8,12 +8,12 @@ datasource db {
   provider = "postgresql"
 }
 
-// ==================== AUTH ====================
+// ==================== AUTH & ACCOUNT ====================
 
 model User {
   id          String       @id @default(uuid())
-  accountId   String?
-  account     Account?     @relation(fields: [accountId], references: [id])
+  accountId   String
+  account     Account      @relation(fields: [accountId], references: [id])
   email       String       @unique
   password    String
   role        UserRole     @default(STAFF)
@@ -42,13 +42,28 @@ model Account {
   subsExpiryDate   DateTime?
   currency         Currency      @default(USD)
   status           AccountStatus @default(ACTIVE)
-  isDeleted        Boolean       @default(false)
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
-  users            User[]
+
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  users         User[]
+  categories    Category[]
+  subCategories SubCategory[]
+  services      Service[]
+  customers     Customer[]
+  sales         Sale[]
+  invoices      Invoice[]
+  saleServices  SaleService[]
+  trashes       Trash[]
+  activityLogs  ActivityLog[]
 
   @@index([pricingPlanId])
+  @@index([status])
 }
+
+// ==================== PERMISSION ====================
 
 model Permission {
   id        String         @id @default(uuid())
@@ -62,10 +77,9 @@ model Permission {
 
   @@unique([userId, module])
   @@index([accountId])
-  @@index([userId])
 }
 
-// ==================== SYSTEM ====================
+// ==================== BILLING ====================
 
 model PricingPlan {
   id             String         @id @default(uuid())
@@ -75,11 +89,12 @@ model PricingPlan {
   yearlyPrice    Decimal
   features       String[]
   allowedModules SystemModule[]
-  userLimit      Int? // null = unlimited
+  userLimit      Int?
   isActive       Boolean        @default(true)
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
-  accounts       Account[]
+
+  accounts Account[]
 
   @@index([isActive])
 }
@@ -87,14 +102,18 @@ model PricingPlan {
 // ==================== CORE ====================
 
 model Category {
-  id            String        @id @default(uuid())
-  name          String
-  description   String?
-  accountId     String
-  isDeleted     Boolean       @default(false)
+  id          String  @id @default(uuid())
+  name        String
+  description String?
+  accountId   String
+  account     Account @relation(fields: [accountId], references: [id])
+
   subCategories SubCategory[]
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  services      Service[]
+
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([accountId])
 }
@@ -106,31 +125,66 @@ model SubCategory {
   categoryId  String
   category    Category @relation(fields: [categoryId], references: [id])
   accountId   String
-  isDeleted   Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  account     Account  @relation(fields: [accountId], references: [id])
+
+  services Service[]
+
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([accountId])
   @@index([categoryId])
 }
 
 model Customer {
-  id            String   @id @default(uuid())
+  id            String  @id @default(uuid())
   name          String
   email         String?
   phone         String
   address       String?
-  hasMembership Boolean  @default(false)
-  isDeleted     Boolean  @default(false)
+  hasMembership Boolean @default(false)
+  isDeleted     Boolean @default(false)
   accountId     String
-  sales         Sale[]
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  account       Account @relation(fields: [accountId], references: [id])
+
+  sales Sale[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([accountId])
-  @@index([name])
   @@index([phone])
+  @@index([name])
 }
+
+model Service {
+  id           String   @id @default(uuid())
+  name         String
+  internalCost Decimal? @default(0)
+  salePrice    Decimal  @default(0)
+  description  String?
+
+  categoryId    String
+  category      Category     @relation(fields: [categoryId], references: [id])
+  subCategoryId String?
+  subCategory   SubCategory? @relation(fields: [subCategoryId], references: [id])
+
+  accountId String
+  account   Account @relation(fields: [accountId], references: [id])
+
+  saleServices SaleService[]
+
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([accountId])
+  @@index([categoryId])
+  @@index([name])
+}
+
+// ==================== SALE & JUNCTION ====================
 
 model Sale {
   id             String        @id @default(uuid())
@@ -138,22 +192,48 @@ model Sale {
   customerId     String?
   customer       Customer?     @relation(fields: [customerId], references: [id])
   customerNumber String?
-  quantity       Int
   paymentMethod  PaymentMethod
-  serviceId      String?
   purchasePrice  Decimal
   sellPrice      Decimal
   featureNames   FeatureName[]
   discount       Decimal?
   due            Decimal?
-  invoices       Invoice[]
-  isDeleted      Boolean       @default(false)
-  accountId      String
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+
+  accountId String
+  account   Account @relation(fields: [accountId], references: [id])
+
+  saleServices SaleService[]
+  invoices     Invoice[]
+
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([accountId])
   @@index([customerId])
+  @@index([createdAt])
+}
+
+model SaleService {
+  id String @id @default(uuid())
+
+  saleId    String
+  serviceId String
+  accountId String
+
+  quantity  Int      @default(1)
+  unitPrice Decimal
+  discount  Decimal? @default(0)
+  total     Decimal
+
+  sale    Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  service Service @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  account Account @relation(fields: [accountId], references: [id])
+
+  @@unique([saleId, serviceId])
+  @@index([accountId])
+  @@index([saleId])
+  @@index([serviceId])
 }
 
 model Invoice {
@@ -165,13 +245,17 @@ model Invoice {
   status      InvoiceStatus @default(PENDING)
   grandTotal  Decimal
   accountId   String
-  isDeleted   Boolean       @default(false)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  account     Account       @relation(fields: [accountId], references: [id])
+
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([accountId])
   @@index([saleId])
 }
+
+// ==================== UTILITY ====================
 
 model Trash {
   id         String       @id @default(uuid())
@@ -180,6 +264,7 @@ model Trash {
   itemId     String
   deletedBy  String
   accountId  String
+  account    Account      @relation(fields: [accountId], references: [id])
   date       DateTime     @default(now())
 
   @@index([accountId])
@@ -192,6 +277,7 @@ model ActivityLog {
   action    SystemAction
   details   String?
   accountId String
+  account   Account      @relation(fields: [accountId], references: [id])
   dateTime  DateTime     @default(now())
 
   @@index([accountId])
@@ -230,18 +316,13 @@ enum SystemModule {
   ACCOUNT
   CATEGORY
   SUBCATEGORY
-  PRODUCT
-  SUPPLIER
+  SERVICE
   CUSTOMER
   SALE
-  PURCHASE
-  INVENTORY
-  WASTE
-  TRASH
-  ACTIVITY_LOG
   INVOICE
   PERMISSION
   PRICING_PLAN
+  // Add more as needed
 }
 
 enum SystemAction {
@@ -252,8 +333,6 @@ enum SystemAction {
   RESTORE
   LOGIN
   LOGOUT
-  STOCK_IN
-  STOCK_OUT
 }
 
 enum FeatureName {
