@@ -9,10 +9,7 @@ import { ActivityLogService } from "../activityLog/activityLog.service.js";
 import { TrashService } from "../trash/trash.service.js";
 import type { CreateServiceInput, UpdateServiceInput } from "./service.validation.js";
 
-const createService = async (
-  data: CreateServiceInput,
-  userId: string,
-): Promise<Service> => {
+const createService = async (data: CreateServiceInput, userId: string): Promise<Service> => {
   const service = await prisma.service.create({
     data,
     include: { category: true, subCategory: true },
@@ -113,11 +110,7 @@ const updateService = async (
   return updated;
 };
 
-const deleteService = async (
-  id: string,
-  accountId: string,
-  userId: string,
-) => {
+const deleteService = async (id: string, accountId: string, userId: string) => {
   return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const service = await tx.service.findFirst({
       where: { id, accountId, isDeleted: false },
