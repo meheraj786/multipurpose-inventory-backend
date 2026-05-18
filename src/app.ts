@@ -17,6 +17,7 @@ import { AuthRoutes } from "./modules/auth/auth.routes.js";
 import { InvoiceRoutes } from "./modules/invoice/invoice.routes.js";
 import { StaffRoutes } from "./modules/staff/staff.routes.js";
 import { PricingPlanRoutes } from "./modules/pricingPlan/pricingPlan.routes.js";
+import { ServiceRoutes } from "./modules/service/service.routes.js";
 
 const app: Express = express();
 
@@ -72,6 +73,7 @@ app.use("/api/v1/trash", TrashRoutes);
 app.use("/api/v1/activity-logs", ActivityLogRoutes);
 app.use("/api/v1/staff", StaffRoutes);
 app.use("/api/v1/pricing-plans", PricingPlanRoutes);
+app.use("/api/v1/services", ServiceRoutes);
 
 // ==================== ERROR HANDLING ====================
 app.use(notFoundHandler);
