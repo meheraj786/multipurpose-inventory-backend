@@ -606,6 +606,8 @@ enum SystemModule {
   PERMISSION
   PRICING_PLAN
   NOTIFICATION
+  ACTIVITY_LOG
+  TRASH
 }
 
 enum SystemAction {

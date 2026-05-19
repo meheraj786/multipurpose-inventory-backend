@@ -1,0 +1,517 @@
+{
+  "info": {
+    "name": "MP Inventory API",
+    "description": "Postman collection for testing the MP Inventory API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/v1/health"
+      }
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"password123\",\n  \"companyName\": \"My Awesome Company\",\n  \"category\": \"Retail\",\n  \"type\": \"Supermarket\",\n  \"model\": \"RETAIL\",\n  \"currency\": \"USD\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{base_url}}/api/v1/auth/register"
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"password123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{base_url}}/api/v1/auth/login"
+          }
+        },
+        {
+          "name": "Get Me",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/auth/me"
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/v1/auth/refresh"
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/v1/auth/logout"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Categories",
+      "item": [
+        {
+          "name": "Create Category",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Electronics\",\n  \"description\": \"Category for electronic goods\",\n  \"accountId\": \"{{accountId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{base_url}}/api/v1/categories"
+          }
+        },
+        {
+          "name": "Get All Categories",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/categories"
+          }
+        },
+        {
+          "name": "Get Single Category",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/categories/{{categoryId}}"
+          }
+        },
+        {
+          "name": "Update Category",
+          "request": {
+            "method": "PATCH",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Electronics & Gadgets\",\n  \"description\": \"Updated description\",\n  \"accountId\": \"{{accountId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{base_url}}/api/v1/categories/{{categoryId}}"
+          }
+        },
+        {
+          "name": "Delete Category",
+          "request": {
+            "method": "DELETE",
+            "url": "{{base_url}}/api/v1/categories/{{categoryId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Sub Categories",
+      "item": [
+        {
+          "name": "Create Sub Category",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Smartphones\",\n  \"description\": \"Mobile phones\",\n  \"categoryId\": \"{{categoryId}}\",\n  \"accountId\": \"{{accountId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{base_url}}/api/v1/sub-categories"
+          }
+        },
+        {
+          "name": "Get All Sub Categories",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/sub-categories"
+          }
+        },
+        {
+          "name": "Get Single Sub Category",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/sub-categories/{{subCategoryId}}"
+          }
+        },
+        {
+          "name": "Update Sub Category",
+          "request": {
+            "method": "PATCH",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Smartphones & Tablets\",\n  \"categoryId\": \"{{categoryId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{base_url}}/api/v1/sub-categories/{{subCategoryId}}"
+          }
+        },
+        {
+          "name": "Delete Sub Category",
+          "request": {
+            "method": "DELETE",
+            "url": "{{base_url}}/api/v1/sub-categories/{{subCategoryId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Customers",
+      "item": [
+        {
+          "name": "Create Customer",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"phone\": \"+1234567890\",\n  \"address\": \"123 Main St\",\n  \"hasMembership\": true,\n  \"accountId\": \"{{accountId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{base_url}}/api/v1/customers"
+          }
+        },
+        {
+          "name": "Get All Customers",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/customers"
+          }
+        },
+        {
+          "name": "Get Single Customer",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/customers/{{customerId}}"
+          }
+        },
+        {
+          "name": "Update Customer",
+          "request": {
+            "method": "PATCH",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Johnathan Doe\",\n  \"accountId\": \"{{accountId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{base_url}}/api/v1/customers/{{customerId}}"
+          }
+        },
+        {
+          "name": "Delete Customer",
+          "request": {
+            "method": "DELETE",
+            "url": "{{base_url}}/api/v1/customers/{{customerId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Sales",
+      "item": [
+        {
+          "name": "Create Sale",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productIds\": [],\n  \"customerId\": \"{{customerId}}\",\n  \"customerNumber\": \"+1234567890\",\n  \"quantity\": 1,\n  \"paymentMethod\": \"CASH\",\n  \"purchasePrice\": 100,\n  \"sellPrice\": 150,\n  \"featureNames\": [\"RETAIL\"],\n  \"discount\": 10,\n  \"due\": 0,\n  \"accountId\": \"{{accountId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{base_url}}/api/v1/sales"
+          }
+        },
+        {
+          "name": "Get All Sales",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/sales"
+          }
+        },
+        {
+          "name": "Get Single Sale",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/sales/{{saleId}}"
+          }
+        },
+        {
+          "name": "Update Sale",
+          "request": {
+            "method": "PATCH",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 2,\n  \"sellPrice\": 300,\n  \"accountId\": \"{{accountId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{base_url}}/api/v1/sales/{{saleId}}"
+          }
+        },
+        {
+          "name": "Delete Sale",
+          "request": {
+            "method": "DELETE",
+            "url": "{{base_url}}/api/v1/sales/{{saleId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Invoices",
+      "item": [
+        {
+          "name": "Create Invoice",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"billTo\": \"John Doe\",\n  \"invoiceDate\": \"2023-10-27T10:00:00Z\",\n  \"saleId\": \"{{saleId}}\",\n  \"status\": \"PENDING\",\n  \"grandTotal\": 140,\n  \"accountId\": \"{{accountId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{base_url}}/api/v1/invoices"
+          }
+        },
+        {
+          "name": "Get All Invoices",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/invoices"
+          }
+        },
+        {
+          "name": "Get Single Invoice",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/invoices/{{invoiceId}}"
+          }
+        },
+        {
+          "name": "Update Invoice",
+          "request": {
+            "method": "PATCH",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"PAID\",\n  \"accountId\": \"{{accountId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{base_url}}/api/v1/invoices/{{invoiceId}}"
+          }
+        },
+        {
+          "name": "Delete Invoice",
+          "request": {
+            "method": "DELETE",
+            "url": "{{base_url}}/api/v1/invoices/{{invoiceId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Services",
+      "item": [
+        {
+          "name": "Create Service",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Mobile Repair\",\n  \"internalCost\": 20,\n  \"salePrice\": 50,\n  \"description\": \"Screen replacement\",\n  \"categoryId\": \"{{categoryId}}\",\n  \"accountId\": \"{{accountId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{base_url}}/api/v1/services"
+          }
+        },
+        {
+          "name": "Get All Services",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/services"
+          }
+        },
+        {
+          "name": "Get Single Service",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/services/{{serviceId}}"
+          }
+        },
+        {
+          "name": "Update Service",
+          "request": {
+            "method": "PATCH",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"salePrice\": 60,\n  \"accountId\": \"{{accountId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{base_url}}/api/v1/services/{{serviceId}}"
+          }
+        },
+        {
+          "name": "Delete Service",
+          "request": {
+            "method": "DELETE",
+            "url": "{{base_url}}/api/v1/services/{{serviceId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Staff",
+      "item": [
+        {
+          "name": "Create Staff",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"staff@example.com\",\n  \"password\": \"password123\",\n  \"name\": \"Staff Member\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{base_url}}/api/v1/staff"
+          }
+        },
+        {
+          "name": "Get All Staff",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/staff"
+          }
+        },
+        {
+          "name": "Get Single Staff",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/staff/{{staffId}}"
+          }
+        },
+        {
+          "name": "Update Staff",
+          "request": {
+            "method": "PATCH",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Staff Name\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{base_url}}/api/v1/staff/{{staffId}}"
+          }
+        },
+        {
+          "name": "Delete Staff",
+          "request": {
+            "method": "DELETE",
+            "url": "{{base_url}}/api/v1/staff/{{staffId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Pricing Plans",
+      "item": [
+        {
+          "name": "Get All Pricing Plans",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/pricing-plans"
+          }
+        },
+        {
+          "name": "Get Single Pricing Plan",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/pricing-plans/{{pricingPlanId}}"
+          }
+        },
+        {
+          "name": "Create Pricing Plan",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Premium Plan\",\n  \"description\": \"For large businesses\",\n  \"monthlyPrice\": 50,\n  \"yearlyPrice\": 500,\n  \"features\": [\"Unlimited Users\", \"Advanced Reports\"]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{base_url}}/api/v1/pricing-plans"
+          }
+        },
+        {
+          "name": "Update Pricing Plan",
+          "request": {
+            "method": "PATCH",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"monthlyPrice\": 55\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{base_url}}/api/v1/pricing-plans/{{pricingPlanId}}"
+          }
+        },
+        {
+          "name": "Toggle Pricing Plan",
+          "request": {
+            "method": "PATCH",
+            "url": "{{base_url}}/api/v1/pricing-plans/{{pricingPlanId}}/toggle"
+          }
+        },
+        {
+          "name": "Delete Pricing Plan",
+          "request": {
+            "method": "DELETE",
+            "url": "{{base_url}}/api/v1/pricing-plans/{{pricingPlanId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Trash",
+      "item": [
+        {
+          "name": "Get Trash",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/trash"
+          }
+        },
+        {
+          "name": "Restore Item",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/v1/trash/restore/{{trashId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Activity Logs",
+      "item": [
+        {
+          "name": "Get Logs",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/activity-logs"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:5000" },
+    { "key": "accountId", "value": "your-account-id-here" },
+    { "key": "categoryId", "value": "your-category-id-here" },
+    { "key": "subCategoryId", "value": "your-sub-category-id-here" },
+    { "key": "customerId", "value": "your-customer-id-here" },
+    { "key": "saleId", "value": "your-sale-id-here" },
+    { "key": "invoiceId", "value": "your-invoice-id-here" },
+    { "key": "serviceId", "value": "your-service-id-here" },
+    { "key": "staffId", "value": "your-staff-id-here" },
+    { "key": "pricingPlanId", "value": "your-pricing-plan-id-here" },
+    { "key": "trashId", "value": "your-trash-id-here" }
+  ]
+}

@@ -10,20 +10,20 @@ import type { CreatePricingPlanInput, UpdatePricingPlanInput } from "./pricingPl
 
 const createPricingPlan = async (
   data: CreatePricingPlanInput,
-  developerUserId: string,
+  _developerUserId: string,
 ): Promise<PricingPlan> => {
   const existing = await prisma.pricingPlan.findUnique({ where: { name: data.name } });
   if (existing) throw new Error("A plan with this name already exists");
 
   const plan = await prisma.pricingPlan.create({ data });
 
-  await ActivityLogService.createLog({
-    userId: developerUserId,
-    module: SystemModule.PRICING_PLAN,
-    action: SystemAction.CREATE,
-    details: `Created pricing plan: ${plan.name}`,
-    accountId: "SYSTEM",
-  });
+  // await ActivityLogService.createLog({
+  //   userId: developerUserId,
+  //   module: SystemModule.PRICING_PLAN,
+  //   action: SystemAction.CREATE,
+  //   details: `Created pricing plan: ${plan.name}`,
+  //   accountId: data.accountId,
+  // });
 
   return plan;
 };

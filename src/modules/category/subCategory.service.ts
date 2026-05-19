@@ -9,8 +9,11 @@ import { TrashService } from "../trash/trash.service.js";
 import { ActivityLogService } from "../activityLog/activityLog.service.js";
 import type { CreateSubCategoryInput, UpdateSubCategoryInput } from "./subCategory.validation.js";
 
-const createSubCategory = async (data: CreateSubCategoryInput): Promise<SubCategory> => {
-  return await prisma.subCategory.create({ data });
+const createSubCategory = async (
+  data: CreateSubCategoryInput,
+  accountId: string,
+): Promise<SubCategory> => {
+  return await prisma.subCategory.create({ data: { ...data, accountId } });
 };
 
 const getAllSubCategories = async (accountId: string) => {

@@ -5,8 +5,9 @@ import type { Prisma } from "@/generated/prisma/client.js";
 import { TrashService } from "../trash/trash.service.js";
 import { ActivityLogService } from "../activityLog/activityLog.service.js";
 
-const createCategory = async (data: CreateCategoryInput): Promise<Category> => {
-  return await prisma.category.create({ data });
+const createCategory = async (data: CreateCategoryInput, accountId: string): Promise<Category> => {
+  console.log(accountId);
+  return await prisma.category.create({ data: { ...data, accountId } });
 };
 
 const getAllCategories = async (accountId: string) => {

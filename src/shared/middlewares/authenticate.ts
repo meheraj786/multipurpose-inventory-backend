@@ -40,6 +40,8 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
     }
 
     req.user = decoded;
+    console.log(req.user, "log from authenticate middleware");
+
     next();
   } catch {
     return res.status(401).json({ success: false, message: "Invalid or expired token" });

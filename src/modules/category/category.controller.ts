@@ -5,7 +5,7 @@ import httpStatus from "http-status";
 
 const createCategory = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const result = await CategoryService.createCategory(req.body);
+    const result = await CategoryService.createCategory(req.body, req?.user?.accountId as string);
 
     sendResponse(res, {
       statusCode: httpStatus.CREATED,

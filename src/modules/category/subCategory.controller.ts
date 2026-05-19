@@ -5,7 +5,8 @@ import { SubCategoryService } from "./subCategory.service.js";
 
 const createSubCategory = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const result = await SubCategoryService.createSubCategory(req.body);
+    const accountId = req?.user?.accountId as string;
+    const result = await SubCategoryService.createSubCategory(req.body, accountId);
 
     sendResponse(res, {
       statusCode: httpStatus.CREATED,

@@ -18,6 +18,8 @@ import { InvoiceRoutes } from "./modules/invoice/invoice.routes.js";
 import { StaffRoutes } from "./modules/staff/staff.routes.js";
 import { PricingPlanRoutes } from "./modules/pricingPlan/pricingPlan.routes.js";
 import { ServiceRoutes } from "./modules/service/service.routes.js";
+import { authenticate } from "./shared/middlewares/authenticate.js";
+import { checkPermission } from "./shared/middlewares/checkPermission.js";
 
 const app: Express = express();
 
@@ -64,15 +66,15 @@ app.get("/api/v1/health", (_req, res) => {
 
 // ==================== API ROUTES ====================
 app.use("/api/v1/auth", AuthRoutes);
-app.use("/api/v1/categories", CategoryRoutes);
-app.use("/api/v1/sub-categories", SubCategoryRoutes);
+app.use("/api/v1/categories", authenticate, checkPermission("CATEGORY"), CategoryRoutes);
+app.use("/api/v1/sub-categories", authenticate, checkPermission("SUB_CATEGORY"), SubCategoryRoutes);
 app.use("/api/v1/customers", CustomerRoutes);
 app.use("/api/v1/sales", SaleRoutes);
 app.use("/api/v1/invoices", InvoiceRoutes);
 app.use("/api/v1/trash", TrashRoutes);
-app.use("/api/v1/activity-logs", ActivityLogRoutes);
+app.use("/api/v1/activity-logs", authenticate, checkPermission("ACTIVITY_LOG"), ActivityLogRoutes);
 app.use("/api/v1/staff", StaffRoutes);
-app.use("/api/v1/pricing-plans", PricingPlanRoutes);
+app.use("/api/v1/pricing-plans", authenticate, checkPermission("PRICING_PLAN"), PricingPlanRoutes);
 app.use("/api/v1/services", ServiceRoutes);
 
 // ==================== ERROR HANDLING ====================

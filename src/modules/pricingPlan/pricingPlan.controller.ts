@@ -7,6 +7,7 @@ const createPricingPlan = async (req: Request, res: Response, next: NextFunction
   try {
     const developerUserId = req.user?.userId as string;
     const result = await PricingPlanService.createPricingPlan(req.body, developerUserId);
+    console.log(req.user);
 
     sendResponse(res, {
       statusCode: httpStatus.CREATED,
