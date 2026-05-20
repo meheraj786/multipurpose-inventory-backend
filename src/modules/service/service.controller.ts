@@ -6,7 +6,11 @@ import { ServiceService } from "./service.service.js";
 const createService = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.userId as string;
-    const result = await ServiceService.createService(req.body, userId, req.user?.accountId as string);
+    const result = await ServiceService.createService(
+      req.body,
+      userId,
+      req.user?.accountId as string,
+    );
 
     sendResponse(res, {
       statusCode: httpStatus.CREATED,
