@@ -21,7 +21,8 @@ export const createSaleZodSchema = z.object({
           discount: z.number().min(0).default(0),
         }),
       )
-      .min(0).default([]),
+      .min(0)
+      .default([]),
 
     saleServices: z
       .array(
