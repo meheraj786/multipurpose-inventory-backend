@@ -4,44 +4,40 @@ import { sendResponse } from "../../shared/utils/response.js";
 import { SaleService } from "./sale.service.js";
 import { InvoiceService } from "../invoice/invoice.service.js";
 
-import type {
-  Prisma,
-  SaleItem,
-  SaleService as SaleServiceType,
-} from "../../generated/prisma/index.js";
-
-type SaleWithRelations = Prisma.SaleGetPayload<{
-  include: {
-    customer: true;
-    saleItems: {
-      include: {
-        product: true;
-      };
-    };
-    saleServices: true;
-  };
-}>;
-
 const createSale = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { saleItems, saleServices, ...saleData } = req.body;
+    const accountId = req.user?.accountId as string;
+    // const userId = req.user?.userId as string;
 
-    const sale = (await SaleService.createSale(
-      { ...saleData, saleItems, saleServices },
-      req?.user?.accountId as string,
-    )) as SaleWithRelations;
+    const sale = await SaleService.createSale(req.body, accountId);
 
-    const grandTotal = calculateGrandTotal(sale);
+    if (!sale) throw new Error("Failed to create sale");
+
+    let total = 0;
+
+    if (sale.saleItems?.length) {
+      total += sale.saleItems.reduce((sum, item) => {
+        return sum + Number(item.sellPrice) * item.quantity - Number(item.discount ?? 0);
+      }, 0);
+    }
+
+    if (sale.saleServices?.length) {
+      total += sale.saleServices.reduce((sum, service) => {
+        return sum + Number(service.total);
+      }, 0);
+    }
+
+    const grandTotal = Math.max(0, total - Number(sale.discount ?? 0));
 
     await InvoiceService.createInvoice(
       {
-        billTo: sale.customer?.name || sale.customerNumber || "Walk-in Customer",
+        billTo: sale.customer?.name ?? sale.customerNumber ?? "Walk-in Customer",
         invoiceDate: new Date().toISOString(),
         saleId: sale.id,
         status: "PENDING",
-        grandTotal: grandTotal,
+        grandTotal,
       },
-      req?.user?.accountId as string,
+      accountId,
     );
 
     sendResponse(res, {
@@ -55,30 +51,9 @@ const createSale = async (req: Request, res: Response, next: NextFunction) => {
   }
 };
 
-const calculateGrandTotal = (sale: SaleWithRelations): number => {
-  let total = 0;
-
-  if (sale.saleItems?.length) {
-    total += sale.saleItems.reduce((sum: number, item: SaleItem) => {
-      const itemTotal = Number(item.sellPrice) * Number(item.quantity) - Number(item.discount || 0);
-      return sum + itemTotal;
-    }, 0);
-  }
-
-  if (sale.saleServices?.length) {
-    total += sale.saleServices.reduce((sum: number, service: SaleServiceType) => {
-      const serviceTotal = Number(service.total || service.unitPrice * service.quantity);
-      return sum + serviceTotal;
-    }, 0);
-  }
-
-  const saleDiscount = Number(sale.discount || 0);
-  return Math.max(0, total - saleDiscount);
-};
-
 const getAllSales = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const accountId = req?.user?.accountId as string;
+    const accountId = req.user?.accountId as string;
     const page = parseInt(req.query.page as string, 10) || 1;
     const limit = parseInt(req.query.limit as string, 10) || 10;
     const search = req.query.search as string | undefined;
@@ -100,7 +75,7 @@ const getAllSales = async (req: Request, res: Response, next: NextFunction) => {
 const getSingleSale = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
-    const accountId = req?.user?.accountId as string;
+    const accountId = req.user?.accountId as string;
 
     const result = await SaleService.getSingleSale(id, accountId);
 
@@ -118,7 +93,8 @@ const getSingleSale = async (req: Request, res: Response, next: NextFunction) =>
 const updateSale = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
-    const { accountId, ...rest } = req.body;
+    const accountId = req.user?.accountId as string;
+    const { accountId: _, ...rest } = req.body;
 
     const result = await SaleService.updateSale(id, accountId, rest);
 
@@ -136,8 +112,8 @@ const updateSale = async (req: Request, res: Response, next: NextFunction) => {
 const deleteSale = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
-    const accountId = req?.user?.accountId as string;
-    const userId = req.body.userId as string;
+    const accountId = req.user?.accountId as string;
+    const userId = req.user?.userId as string;
 
     const result = await SaleService.deleteSale(id, accountId, userId);
 
