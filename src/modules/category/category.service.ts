@@ -13,7 +13,7 @@ const createCategory = async (data: CreateCategoryInput, accountId: string): Pro
 const getAllCategories = async (accountId: string) => {
   return await prisma.category.findMany({
     where: { accountId, isDeleted: false },
-    include: { subCategories: true },
+    include: { subCategories: true, services: true },
   });
 };
 

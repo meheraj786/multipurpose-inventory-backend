@@ -9,9 +9,9 @@ import { ActivityLogService } from "../activityLog/activityLog.service.js";
 import { TrashService } from "../trash/trash.service.js";
 import type { CreateServiceInput, UpdateServiceInput } from "./service.validation.js";
 
-const createService = async (data: CreateServiceInput, userId: string): Promise<Service> => {
+const createService = async (data: CreateServiceInput, userId: string, accountId: string): Promise<Service> => {
   const service = await prisma.service.create({
-    data,
+    data: { ...data, accountId },
     include: { category: true, subCategory: true },
   });
 
@@ -20,7 +20,7 @@ const createService = async (data: CreateServiceInput, userId: string): Promise<
     module: SystemModule.SERVICE,
     action: SystemAction.CREATE,
     details: `Created service: ${service.name}`,
-    accountId: data.accountId,
+    accountId: accountId,
   });
 
   return service;

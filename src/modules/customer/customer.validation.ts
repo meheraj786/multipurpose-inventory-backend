@@ -7,7 +7,6 @@ const createCustomerZodSchema = z.object({
     phone: z.string().min(7).max(20),
     address: z.string().optional(),
     hasMembership: z.boolean().optional().default(false),
-    accountId: z.string(),
   }),
 });
 
@@ -18,7 +17,6 @@ const updateCustomerZodSchema = z.object({
     phone: z.string().min(7).max(20).optional(),
     address: z.string().optional(),
     hasMembership: z.boolean().optional(),
-    accountId: z.string(),
   }),
 });
 

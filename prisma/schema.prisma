@@ -436,7 +436,7 @@ model Sale {
   customer       Customer?     @relation(fields: [customerId], references: [id])
   customerNumber String?
   quantity       Int
-  paymentMethod  PaymentMethod
+  paymentMethod  PaymentMethod @default(CASH)
   productIds     String[]
   purchasePrice  Decimal
   sellPrice      Decimal

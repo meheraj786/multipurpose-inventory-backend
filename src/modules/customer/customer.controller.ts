@@ -5,7 +5,7 @@ import { CustomerService } from "./customer.service.js";
 
 const createCustomer = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const result = await CustomerService.createCustomer(req.body);
+    const result = await CustomerService.createCustomer(req.body, req?.user?.accountId as string);
 
     sendResponse(res, {
       statusCode: httpStatus.CREATED,

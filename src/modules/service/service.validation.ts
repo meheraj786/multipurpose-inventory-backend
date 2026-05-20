@@ -8,7 +8,6 @@ const createServiceZodSchema = z.object({
     description: z.string().optional(),
     categoryId: z.string(),
     subCategoryId: z.string().optional(),
-    accountId: z.string(),
   }),
 });
 
@@ -20,7 +19,6 @@ const updateServiceZodSchema = z.object({
     description: z.string().optional(),
     categoryId: z.string().optional(),
     subCategoryId: z.string().optional(),
-    accountId: z.string(),
   }),
 });
 

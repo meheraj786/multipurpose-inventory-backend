@@ -9,8 +9,8 @@ import { ActivityLogService } from "../activityLog/activityLog.service.js";
 import { TrashService } from "../trash/trash.service.js";
 import type { CreateCustomerInput, UpdateCustomerInput } from "./customer.validation.js";
 
-const createCustomer = async (data: CreateCustomerInput): Promise<Customer> => {
-  return await prisma.customer.create({ data });
+const createCustomer = async (data: CreateCustomerInput, accountId: string): Promise<Customer> => {
+  return await prisma.customer.create({ data: { ...data, accountId } });
 };
 
 const getAllCustomers = async (

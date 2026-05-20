@@ -13,7 +13,6 @@ declare global {
 
 export const authenticate = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // Read access token from cookie
     const token = req.cookies?.accessToken;
 
     if (!token) {

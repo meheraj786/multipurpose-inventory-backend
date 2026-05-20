@@ -16,7 +16,6 @@ const createSaleZodSchema = z.object({
     featureNames: z.array(FeatureNameEnum).min(1),
     discount: z.number().optional(),
     due: z.number().optional(),
-    accountId: z.string(),
   }),
 });
 
@@ -33,7 +32,6 @@ const updateSaleZodSchema = z.object({
     featureNames: z.array(FeatureNameEnum).min(1).optional(),
     discount: z.number().optional(),
     due: z.number().optional(),
-    accountId: z.string(),
   }),
 });
 

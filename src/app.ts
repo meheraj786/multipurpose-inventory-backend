@@ -67,15 +67,15 @@ app.get("/api/v1/health", (_req, res) => {
 // ==================== API ROUTES ====================
 app.use("/api/v1/auth", AuthRoutes);
 app.use("/api/v1/categories", authenticate, checkPermission("CATEGORY"), CategoryRoutes);
-app.use("/api/v1/sub-categories", authenticate, checkPermission("SUB_CATEGORY"), SubCategoryRoutes);
-app.use("/api/v1/customers", CustomerRoutes);
+app.use("/api/v1/sub-categories", authenticate, checkPermission("SUBCATEGORY"), SubCategoryRoutes);
+app.use("/api/v1/customers", authenticate, checkPermission("CUSTOMER"), CustomerRoutes);
 app.use("/api/v1/sales", SaleRoutes);
 app.use("/api/v1/invoices", InvoiceRoutes);
 app.use("/api/v1/trash", TrashRoutes);
 app.use("/api/v1/activity-logs", authenticate, checkPermission("ACTIVITY_LOG"), ActivityLogRoutes);
 app.use("/api/v1/staff", StaffRoutes);
 app.use("/api/v1/pricing-plans", authenticate, checkPermission("PRICING_PLAN"), PricingPlanRoutes);
-app.use("/api/v1/services", ServiceRoutes);
+app.use("/api/v1/services", authenticate, checkPermission("SERVICE"), ServiceRoutes);
 
 // ==================== ERROR HANDLING ====================
 app.use(notFoundHandler);

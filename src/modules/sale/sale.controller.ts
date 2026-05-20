@@ -6,7 +6,7 @@ import { InvoiceService } from "../invoice/invoice.service.js";
 
 const createSale = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const sale = await SaleService.createSale(req.body);
+    const sale = await SaleService.createSale(req.body, req?.user?.accountId as string);
 
     await InvoiceService.createInvoice({
       billTo: req.body.customerNumber ?? req.body.customerId ?? "Walk-in Customer",
@@ -14,7 +14,7 @@ const createSale = async (req: Request, res: Response, next: NextFunction) => {
       saleId: sale.id,
       status: "PENDING",
       grandTotal: Number(sale.sellPrice) - Number(sale.discount ?? 0),
-      accountId: sale.accountId,
+      accountId: req?.user?.accountId as string,
     });
 
     sendResponse(res, {
@@ -31,8 +31,8 @@ const createSale = async (req: Request, res: Response, next: NextFunction) => {
 const getAllSales = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const accountId = req?.user?.accountId as string;
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
+    const page = parseInt(req.query.page as string, 10) || 1;
+    const limit = parseInt(req.query.limit as string, 10) || 10;
     const search = req.query.search as string | undefined;
 
     const result = await SaleService.getAllSales(accountId, page, limit, search);
