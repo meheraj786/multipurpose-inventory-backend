@@ -4,7 +4,11 @@ import { sendResponse } from "../../shared/utils/response.js";
 import { SaleService } from "./sale.service.js";
 import { InvoiceService } from "../invoice/invoice.service.js";
 
-import type { Prisma, SaleItem, SaleService as SaleServiceType } from "../../generated/prisma/index.js";
+import type {
+  Prisma,
+  SaleItem,
+  SaleService as SaleServiceType,
+} from "../../generated/prisma/index.js";
 
 type SaleWithRelations = Prisma.SaleGetPayload<{
   include: {
@@ -18,25 +22,27 @@ type SaleWithRelations = Prisma.SaleGetPayload<{
   };
 }>;
 
-
 const createSale = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { saleItems, saleServices, ...saleData } = req.body;
 
-    const sale = await SaleService.createSale(
-      { ...saleData, saleItems, saleServices }, 
-      req?.user?.accountId as string
-    ) as SaleWithRelations;   
+    const sale = (await SaleService.createSale(
+      { ...saleData, saleItems, saleServices },
+      req?.user?.accountId as string,
+    )) as SaleWithRelations;
 
     const grandTotal = calculateGrandTotal(sale);
 
-    await InvoiceService.createInvoice({
-      billTo: sale.customer?.name || sale.customerNumber || "Walk-in Customer",
-      invoiceDate: new Date().toISOString(),
-      saleId: sale.id,
-      status: "PENDING",
-      grandTotal: grandTotal,
-    }, req?.user?.accountId as string);
+    await InvoiceService.createInvoice(
+      {
+        billTo: sale.customer?.name || sale.customerNumber || "Walk-in Customer",
+        invoiceDate: new Date().toISOString(),
+        saleId: sale.id,
+        status: "PENDING",
+        grandTotal: grandTotal,
+      },
+      req?.user?.accountId as string,
+    );
 
     sendResponse(res, {
       statusCode: httpStatus.CREATED,
@@ -69,7 +75,6 @@ const calculateGrandTotal = (sale: SaleWithRelations): number => {
   const saleDiscount = Number(sale.discount || 0);
   return Math.max(0, total - saleDiscount);
 };
-
 
 const getAllSales = async (req: Request, res: Response, next: NextFunction) => {
   try {

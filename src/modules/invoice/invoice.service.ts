@@ -20,7 +20,6 @@ const createInvoice = async (data: CreateInvoiceInput, accountId: string): Promi
   });
 };
 
-
 const getAllInvoices = async (
   accountId: string,
   page: number = 1,

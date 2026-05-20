@@ -11,7 +11,6 @@ import type { CreateSaleInput, UpdateSaleInput } from "./sale.validation.js";
 
 const createSale = async (data: CreateSaleInput, accountId: string): Promise<Sale> => {
   return await prisma.$transaction(async (tx) => {
-    
     const sale = await tx.sale.create({
       data: {
         customerId: data.customerId,
@@ -23,7 +22,7 @@ const createSale = async (data: CreateSaleInput, accountId: string): Promise<Sal
       },
       include: {
         customer: true,
-      }
+      },
     });
 
     for (const item of data.saleItems) {
@@ -36,7 +35,7 @@ const createSale = async (data: CreateSaleInput, accountId: string): Promise<Sal
           sellPrice: item.sellPrice,
           discount: item.discount,
           accountId,
-        }
+        },
       });
 
       let remaining = item.quantity;
@@ -46,9 +45,9 @@ const createSale = async (data: CreateSaleInput, accountId: string): Promise<Sal
           productId: item.productId,
           accountId,
           isDeleted: false,
-          quantity: { gt: 0 }
+          quantity: { gt: 0 },
         },
-        orderBy: { createdAt: 'asc' },
+        orderBy: { createdAt: "asc" },
       });
 
       for (const stock of stocks) {
@@ -58,7 +57,7 @@ const createSale = async (data: CreateSaleInput, accountId: string): Promise<Sal
 
         await tx.productStock.update({
           where: { id: stock.id },
-          data: { quantity: { decrement: deduct } }
+          data: { quantity: { decrement: deduct } },
         });
 
         remaining -= deduct;
