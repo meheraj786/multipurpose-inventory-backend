@@ -5,7 +5,7 @@ import httpStatus from "http-status";
 
 const getTrash = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const  accountId  = req.user?.accountId;
+    const accountId = req.user?.accountId;
     const result = await TrashService.getTrashByAccount(accountId as string);
     sendResponse(res, {
       statusCode: httpStatus.OK,
