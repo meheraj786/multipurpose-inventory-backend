@@ -47,7 +47,7 @@ const getAllInvoices = async (
       skip,
       take: limit,
       orderBy: { createdAt: "desc" },
-      include: { sale: { include: { customer: true } } },
+      include: { sale: { include: { customer: true, saleItems: true, saleServices: true } } },
     }),
     prisma.invoice.count({ where }),
   ]);
@@ -81,6 +81,7 @@ const updateInvoice = async (
       ...data,
       ...(data.invoiceDate && { invoiceDate: new Date(data.invoiceDate) }),
     },
+    include: { sale: { include: { customer: true, saleItems: true, saleServices: true } } },
   });
 };
 
