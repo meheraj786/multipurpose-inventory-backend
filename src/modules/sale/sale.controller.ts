@@ -4,18 +4,39 @@ import { sendResponse } from "../../shared/utils/response.js";
 import { SaleService } from "./sale.service.js";
 import { InvoiceService } from "../invoice/invoice.service.js";
 
+import type { Prisma, SaleItem, SaleService as SaleServiceType } from "../../generated/prisma/index.js";
+
+type SaleWithRelations = Prisma.SaleGetPayload<{
+  include: {
+    customer: true;
+    saleItems: {
+      include: {
+        product: true;
+      };
+    };
+    saleServices: true;
+  };
+}>;
+
+
 const createSale = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const sale = await SaleService.createSale(req.body, req?.user?.accountId as string);
+    const { saleItems, saleServices, ...saleData } = req.body;
+
+    const sale = await SaleService.createSale(
+      { ...saleData, saleItems, saleServices }, 
+      req?.user?.accountId as string
+    ) as SaleWithRelations;   
+
+    const grandTotal = calculateGrandTotal(sale);
 
     await InvoiceService.createInvoice({
-      billTo: req.body.customerNumber ?? req.body.customerId ?? "Walk-in Customer",
+      billTo: sale.customer?.name || sale.customerNumber || "Walk-in Customer",
       invoiceDate: new Date().toISOString(),
       saleId: sale.id,
       status: "PENDING",
-      grandTotal: Number(sale.sellPrice) - Number(sale.discount ?? 0),
-      accountId: req?.user?.accountId as string,
-    });
+      grandTotal: grandTotal,
+    }, req?.user?.accountId as string);
 
     sendResponse(res, {
       statusCode: httpStatus.CREATED,
@@ -27,6 +48,28 @@ const createSale = async (req: Request, res: Response, next: NextFunction) => {
     next(error);
   }
 };
+
+const calculateGrandTotal = (sale: SaleWithRelations): number => {
+  let total = 0;
+
+  if (sale.saleItems?.length) {
+    total += sale.saleItems.reduce((sum: number, item: SaleItem) => {
+      const itemTotal = Number(item.sellPrice) * Number(item.quantity) - Number(item.discount || 0);
+      return sum + itemTotal;
+    }, 0);
+  }
+
+  if (sale.saleServices?.length) {
+    total += sale.saleServices.reduce((sum: number, service: SaleServiceType) => {
+      const serviceTotal = Number(service.total || service.unitPrice * service.quantity);
+      return sum + serviceTotal;
+    }, 0);
+  }
+
+  const saleDiscount = Number(sale.discount || 0);
+  return Math.max(0, total - saleDiscount);
+};
+
 
 const getAllSales = async (req: Request, res: Response, next: NextFunction) => {
   try {

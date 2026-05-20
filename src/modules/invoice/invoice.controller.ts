@@ -5,7 +5,7 @@ import { InvoiceService } from "./invoice.service.js";
 
 const createInvoice = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const result = await InvoiceService.createInvoice(req.body);
+    const result = await InvoiceService.createInvoice(req.body, req?.user?.accountId as string);
 
     sendResponse(res, {
       statusCode: httpStatus.CREATED,
@@ -21,8 +21,8 @@ const createInvoice = async (req: Request, res: Response, next: NextFunction) =>
 const getAllInvoices = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const accountId = req?.user?.accountId as string;
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
+    const page = parseInt(req.query.page as string, 10) || 1;
+    const limit = parseInt(req.query.limit as string, 10) || 10;
     const search = req.query.search as string | undefined;
     const status = req.query.status as string | undefined;
 

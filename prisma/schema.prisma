@@ -69,6 +69,7 @@ model Account {
   activityLogs          ActivityLog[]
   subscriptionHistories SubscriptionHistory[]
   notifications         Notification[]
+  saleItems             SaleItem[]
 
   @@index([pricingPlanId])
   @@index([status])
@@ -211,6 +212,7 @@ model Product {
   category             Category     @relation(fields: [categoryId], references: [id])
   subCategoryId        String?
   subCategory          SubCategory? @relation(fields: [subCategoryId], references: [id])
+  saleItems            SaleItem[]
   accountId            String
   account              Account      @relation(fields: [accountId], references: [id])
   isDeleted            Boolean      @default(false)
@@ -431,30 +433,48 @@ model Customer {
 // ==================== SALE ====================
 
 model Sale {
-  id             String        @id @default(uuid())
+  id             String      @id @default(uuid())
   customerId     String?
-  customer       Customer?     @relation(fields: [customerId], references: [id])
+  customer       Customer?   @relation(fields: [customerId], references: [id])
   customerNumber String?
-  quantity       Int
   paymentMethod  PaymentMethod @default(CASH)
-  productIds     String[]
-  purchasePrice  Decimal
-  sellPrice      Decimal
-  featureNames   FeatureName[]
-  discount       Decimal?
-  due            Decimal?
-  isDeleted      Boolean       @default(false)
+  discount       Decimal?    @default(0)
+  due            Decimal?    @default(0)
+  isDeleted      Boolean     @default(false)
   accountId      String
-  account        Account       @relation(fields: [accountId], references: [id])
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  account        Account     @relation(fields: [accountId], references: [id])
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
 
+  saleItems    SaleItem[]
   saleServices SaleService[]
   invoices     Invoice[]
 
   @@index([accountId])
   @@index([customerId])
   @@index([createdAt])
+}
+
+model SaleItem {
+  id            String   @id @default(uuid())
+  saleId        String
+  sale          Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  
+  productId     String?
+  product       Product? @relation(fields: [productId], references: [id])
+  
+  quantity      Int
+  purchasePrice Decimal
+  sellPrice     Decimal
+  discount      Decimal? @default(0)
+  
+  accountId     String
+  account       Account  @relation(fields: [accountId], references: [id])
+  createdAt     DateTime @default(now())
+
+  @@index([saleId])
+  @@index([productId])
+  @@index([accountId])
 }
 
 model SaleService {

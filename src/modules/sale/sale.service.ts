@@ -10,7 +10,67 @@ import { TrashService } from "../trash/trash.service.js";
 import type { CreateSaleInput, UpdateSaleInput } from "./sale.validation.js";
 
 const createSale = async (data: CreateSaleInput, accountId: string): Promise<Sale> => {
-  return await prisma.sale.create({ data: { ...data, accountId } });
+  return await prisma.$transaction(async (tx) => {
+    
+    const sale = await tx.sale.create({
+      data: {
+        customerId: data.customerId,
+        customerNumber: data.customerNumber,
+        paymentMethod: data.paymentMethod,
+        discount: data.discount,
+        due: data.due,
+        accountId,
+      },
+      include: {
+        customer: true,
+      }
+    });
+
+    for (const item of data.saleItems) {
+      await tx.saleItem.create({
+        data: {
+          saleId: sale.id,
+          productId: item.productId,
+          quantity: item.quantity,
+          purchasePrice: item.purchasePrice,
+          sellPrice: item.sellPrice,
+          discount: item.discount,
+          accountId,
+        }
+      });
+
+      let remaining = item.quantity;
+
+      const stocks = await tx.productStock.findMany({
+        where: {
+          productId: item.productId,
+          accountId,
+          isDeleted: false,
+          quantity: { gt: 0 }
+        },
+        orderBy: { createdAt: 'asc' },
+      });
+
+      for (const stock of stocks) {
+        if (remaining <= 0) break;
+
+        const deduct = Math.min(remaining, stock.quantity);
+
+        await tx.productStock.update({
+          where: { id: stock.id },
+          data: { quantity: { decrement: deduct } }
+        });
+
+        remaining -= deduct;
+      }
+
+      if (remaining > 0) {
+        throw new Error(`Insufficient stock for product: ${item.productId}`);
+      }
+    }
+
+    return sale;
+  });
 };
 
 const getAllSales = async (

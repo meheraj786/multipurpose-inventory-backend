@@ -1,38 +1,57 @@
 import { z } from "zod";
+import { PaymentMethod, FeatureName } from "../../generated/prisma/index.js";
 
-const FeatureNameEnum = z.enum(["RETAIL", "SERVICE", "RESTAURANT"]);
-const PaymentMethodEnum = z.enum(["CASH", "CARD", "MOBILE_BANKING", "CREDIT"]);
-
-const createSaleZodSchema = z.object({
+export const createSaleZodSchema = z.object({
   body: z.object({
-    productIds: z.array(z.string()).optional().default([]),
     customerId: z.string().optional(),
     customerNumber: z.string().optional(),
-    quantity: z.number().int().min(1),
-    paymentMethod: PaymentMethodEnum,
-    serviceId: z.string().optional(),
-    purchasePrice: z.number().positive(),
-    sellPrice: z.number().positive(),
-    featureNames: z.array(FeatureNameEnum).min(1),
-    discount: z.number().optional(),
-    due: z.number().optional(),
+
+    paymentMethod: z.nativeEnum(PaymentMethod).default("CASH"),
+
+    discount: z.number().min(0).default(0),
+    due: z.number().min(0).default(0),
+
+    saleItems: z
+      .array(
+        z.object({
+          productId: z.string(),
+          quantity: z.number().int().min(1),
+          purchasePrice: z.number().min(0),
+          sellPrice: z.number().min(0),
+          discount: z.number().min(0).default(0),
+        }),
+      )
+      .min(1),
+
+    saleServices: z
+      .array(
+        z.object({
+          serviceId: z.string(),
+          quantity: z.number().int().min(1),
+          unitPrice: z.number().min(0),
+          discount: z.number().min(0).default(0),
+        }),
+      )
+      .optional(),
   }),
 });
 
-const updateSaleZodSchema = z.object({
-  body: z.object({
-    productIds: z.array(z.string()).optional(),
-    customerId: z.string().optional(),
-    customerNumber: z.string().optional(),
-    quantity: z.number().int().min(1).optional(),
-    paymentMethod: PaymentMethodEnum.optional(),
-    serviceId: z.string().optional(),
-    purchasePrice: z.number().positive().optional(),
-    sellPrice: z.number().positive().optional(),
-    featureNames: z.array(FeatureNameEnum).min(1).optional(),
-    discount: z.number().optional(),
-    due: z.number().optional(),
-  }),
+export const updateSaleZodSchema = z.object({
+  body: z
+    .object({
+      customerId: z.string().optional(),
+      customerNumber: z.string().optional(),
+      paymentMethod: z.nativeEnum(PaymentMethod).optional(),
+      discount: z.number().min(0).optional(),
+      due: z.number().min(0).optional(),
+
+      productIds: z.array(z.string()).optional(),
+      quantity: z.number().int().min(1).optional(),
+      purchasePrice: z.number().optional(),
+      sellPrice: z.number().optional(),
+      featureNames: z.array(z.nativeEnum(FeatureName)).optional(),
+    })
+    .strict(),
 });
 
 export type CreateSaleInput = z.infer<typeof createSaleZodSchema>["body"];

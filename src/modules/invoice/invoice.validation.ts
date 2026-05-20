@@ -2,6 +2,8 @@ import { z } from "zod";
 
 const InvoiceStatusEnum = z.enum(["PENDING", "PAID", "PARTIALLY_PAID", "CANCELLED"]);
 
+
+
 const createInvoiceZodSchema = z.object({
   body: z.object({
     billTo: z.string().min(2),
@@ -9,7 +11,6 @@ const createInvoiceZodSchema = z.object({
     saleId: z.string(),
     status: InvoiceStatusEnum.optional().default("PENDING"),
     grandTotal: z.number().positive(),
-    accountId: z.string(),
   }),
 });
 
@@ -20,7 +21,6 @@ const updateInvoiceZodSchema = z.object({
     saleId: z.string().optional(),
     status: InvoiceStatusEnum.optional(),
     grandTotal: z.number().positive().optional(),
-    accountId: z.string(),
   }),
 });
 

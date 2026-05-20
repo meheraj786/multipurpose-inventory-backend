@@ -9,15 +9,17 @@ import { ActivityLogService } from "../activityLog/activityLog.service.js";
 import { TrashService } from "../trash/trash.service.js";
 import type { CreateInvoiceInput, UpdateInvoiceInput } from "./invoice.validation.js";
 
-const createInvoice = async (data: CreateInvoiceInput): Promise<Invoice> => {
+const createInvoice = async (data: CreateInvoiceInput, accountId: string): Promise<Invoice> => {
   return await prisma.invoice.create({
     data: {
       ...data,
+      accountId,
       invoiceDate: new Date(data.invoiceDate),
     },
     include: { sale: true },
   });
 };
+
 
 const getAllInvoices = async (
   accountId: string,
