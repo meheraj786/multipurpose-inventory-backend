@@ -25,8 +25,8 @@ const createCustomer = async (req: Request, res: Response, next: NextFunction) =
 const getAllCustomers = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const accountId = req?.user?.accountId as string;
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
+    const page = parseInt(req.query.page as string, 10) || 1;
+    const limit = parseInt(req.query.limit as string, 10) || 10;
     const search = req.query.search as string | undefined;
 
     const result = await CustomerService.getAllCustomers(accountId, page, limit, search);
