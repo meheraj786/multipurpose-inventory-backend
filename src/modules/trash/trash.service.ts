@@ -34,7 +34,6 @@ const restoreItem = async (trashId: string, accountId: string, userId: string) =
       throw new Error("Item not found in trash");
     }
 
-    // Only map models that actually exist in the schema
     const modelMap: Partial<Record<SystemModule, keyof Prisma.TransactionClient>> = {
       USER: "user",
       ACCOUNT: "account",
@@ -45,7 +44,6 @@ const restoreItem = async (trashId: string, accountId: string, userId: string) =
       INVOICE: "invoice",
       PERMISSION: "permission",
       AUTH: "user",
-      // PRODUCT, SUPPLIER, PURCHASE, INVENTORY, WASTE — add when those modules are built
     };
 
     const prismaModelName = modelMap[trashItem.moduleName];

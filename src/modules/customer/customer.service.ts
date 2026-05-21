@@ -9,8 +9,22 @@ import { ActivityLogService } from "../activityLog/activityLog.service.js";
 import { TrashService } from "../trash/trash.service.js";
 import type { CreateCustomerInput, UpdateCustomerInput } from "./customer.validation.js";
 
-const createCustomer = async (data: CreateCustomerInput, accountId: string): Promise<Customer> => {
-  return await prisma.customer.create({ data: { ...data, accountId } });
+const createCustomer = async (
+  data: CreateCustomerInput,
+  accountId: string,
+  userId: string,
+): Promise<Customer> => {
+  const customer = await prisma.customer.create({ data: { ...data, accountId } });
+
+  await ActivityLogService.createLog({
+    userId,
+    module: SystemModule.CUSTOMER,
+    action: SystemAction.CREATE,
+    details: `Created customer: ${customer.name}`,
+    accountId,
+  });
+
+  return customer;
 };
 
 const getAllCustomers = async (
@@ -63,11 +77,22 @@ const updateCustomer = async (
   id: string,
   accountId: string,
   data: UpdateCustomerInput,
+  userId: string,
 ): Promise<Customer> => {
-  return await prisma.customer.update({
+  const customer = await prisma.customer.update({
     where: { id, accountId },
     data,
   });
+
+  await ActivityLogService.createLog({
+    userId,
+    module: SystemModule.CUSTOMER,
+    action: SystemAction.UPDATE,
+    details: `Updated customer: ${customer.name}`,
+    accountId,
+  });
+
+  return customer;
 };
 
 const deleteCustomer = async (id: string, accountId: string, userId: string) => {

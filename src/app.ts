@@ -70,10 +70,10 @@ app.use("/api/v1/categories", authenticate, checkPermission("CATEGORY"), Categor
 app.use("/api/v1/sub-categories", authenticate, checkPermission("SUBCATEGORY"), SubCategoryRoutes);
 app.use("/api/v1/customers", authenticate, checkPermission("CUSTOMER"), CustomerRoutes);
 app.use("/api/v1/sales", authenticate, checkPermission("SALE"), SaleRoutes);
-app.use("/api/v1/invoices", InvoiceRoutes);
-app.use("/api/v1/trash", TrashRoutes);
+app.use("/api/v1/invoices", authenticate, checkPermission("INVOICE"), InvoiceRoutes);
+app.use("/api/v1/trash", authenticate, checkPermission("TRASH"), TrashRoutes);
 app.use("/api/v1/activity-logs", authenticate, checkPermission("ACTIVITY_LOG"), ActivityLogRoutes);
-app.use("/api/v1/staff", StaffRoutes);
+app.use("/api/v1/staff", authenticate, checkPermission("STAFF"), StaffRoutes);
 app.use("/api/v1/pricing-plans", authenticate, checkPermission("PRICING_PLAN"), PricingPlanRoutes);
 app.use("/api/v1/services", authenticate, checkPermission("SERVICE"), ServiceRoutes);
 

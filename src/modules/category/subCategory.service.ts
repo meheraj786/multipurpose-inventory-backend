@@ -12,19 +12,25 @@ import type { CreateSubCategoryInput, UpdateSubCategoryInput } from "./subCatego
 const createSubCategory = async (
   data: CreateSubCategoryInput,
   accountId: string,
+  userId: string,
 ): Promise<SubCategory> => {
-  return await prisma.subCategory.create({ data: { ...data, accountId } });
+  const subCategory = await prisma.subCategory.create({ data: { ...data, accountId } });
+
+  await ActivityLogService.createLog({
+    userId,
+    module: SystemModule.SUBCATEGORY,
+    action: SystemAction.CREATE,
+    details: `Created sub-category: ${subCategory.name}`,
+    accountId,
+  });
+
+  return subCategory;
 };
 
 const getAllSubCategories = async (accountId: string) => {
   return await prisma.subCategory.findMany({
-    where: {
-      accountId,
-      isDeleted: false,
-    },
-    include: {
-      category: true,
-    },
+    where: { accountId, isDeleted: false },
+    include: { category: true },
     orderBy: { createdAt: "desc" },
   });
 };
@@ -40,19 +46,27 @@ const updateSubCategory = async (
   id: string,
   accountId: string,
   payload: UpdateSubCategoryInput,
+  userId: string,
 ): Promise<SubCategory> => {
-  return await prisma.subCategory.update({
+  const subCategory = await prisma.subCategory.update({
     where: { id, accountId },
     data: payload,
   });
+
+  await ActivityLogService.createLog({
+    userId,
+    module: SystemModule.SUBCATEGORY,
+    action: SystemAction.UPDATE,
+    details: `Updated sub-category: ${subCategory.name}`,
+    accountId,
+  });
+
+  return subCategory;
 };
 
 const deleteSubCategory = async (id: string, accountId: string, userId: string) => {
   return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-    const subCategory = await tx.subCategory.findUnique({
-      where: { id, accountId },
-    });
-
+    const subCategory = await tx.subCategory.findUnique({ where: { id, accountId } });
     if (!subCategory) throw new Error("Sub-category not found");
 
     const result = await tx.subCategory.update({

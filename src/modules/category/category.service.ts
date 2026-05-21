@@ -1,13 +1,21 @@
-import { type Category, SystemAction, SystemModule } from "../../generated/prisma/index.js";
+import { type Category, SystemAction, SystemModule, type Prisma } from "../../generated/prisma/index.js";
 import prisma from "../../shared/utils/prisma.js";
 import type { CreateCategoryInput, UpdateCategoryInput } from "./category.validation.js";
-import type { Prisma } from "@/generated/prisma/client.js";
 import { TrashService } from "../trash/trash.service.js";
 import { ActivityLogService } from "../activityLog/activityLog.service.js";
 
-const createCategory = async (data: CreateCategoryInput, accountId: string): Promise<Category> => {
-  console.log(accountId);
-  return await prisma.category.create({ data: { ...data, accountId } });
+const createCategory = async (data: CreateCategoryInput, accountId: string, userId: string): Promise<Category> => {
+  const category = await prisma.category.create({ data: { ...data, accountId } });
+
+  await ActivityLogService.createLog({
+    userId,
+    module: SystemModule.CATEGORY,
+    action: SystemAction.CREATE,
+    details: `Created category: ${category.name}`,
+    accountId,
+  });
+
+  return category;
 };
 
 const getAllCategories = async (accountId: string) => {
@@ -24,11 +32,26 @@ const getSingleCategory = async (id: string, accountId: string) => {
   });
 };
 
-const updateCategory = async (id: string, accountId: string, data: UpdateCategoryInput) => {
-  return await prisma.category.update({
+const updateCategory = async (
+  id: string,
+  accountId: string,
+  data: UpdateCategoryInput,
+  userId: string,
+) => {
+  const category = await prisma.category.update({
     where: { id, accountId },
     data,
   });
+
+  await ActivityLogService.createLog({
+    userId,
+    module: SystemModule.CATEGORY,
+    action: SystemAction.UPDATE,
+    details: `Updated category: ${category.name}`,
+    accountId,
+  });
+
+  return category;
 };
 
 const deleteCategory = async (id: string, accountId: string, userId: string) => {
@@ -46,7 +69,7 @@ const deleteCategory = async (id: string, accountId: string, userId: string) => 
       itemName: category.name,
       itemId: category.id,
       deletedBy: userId,
-      accountId: accountId,
+      accountId,
     });
 
     await ActivityLogService.createLog({

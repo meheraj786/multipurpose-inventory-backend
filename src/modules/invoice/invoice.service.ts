@@ -9,8 +9,12 @@ import { ActivityLogService } from "../activityLog/activityLog.service.js";
 import { TrashService } from "../trash/trash.service.js";
 import type { CreateInvoiceInput, UpdateInvoiceInput } from "./invoice.validation.js";
 
-const createInvoice = async (data: CreateInvoiceInput, accountId: string): Promise<Invoice> => {
-  return await prisma.invoice.create({
+const createInvoice = async (
+  data: CreateInvoiceInput,
+  accountId: string,
+  userId?: string,
+): Promise<Invoice> => {
+  const invoice = await prisma.invoice.create({
     data: {
       ...data,
       accountId,
@@ -18,6 +22,18 @@ const createInvoice = async (data: CreateInvoiceInput, accountId: string): Promi
     },
     include: { sale: true },
   });
+
+  if (userId) {
+    await ActivityLogService.createLog({
+      userId,
+      module: SystemModule.INVOICE,
+      action: SystemAction.CREATE,
+      details: `Created invoice for sale: ${invoice.saleId}`,
+      accountId,
+    });
+  }
+
+  return invoice;
 };
 
 const getAllInvoices = async (
@@ -74,8 +90,9 @@ const updateInvoice = async (
   id: string,
   accountId: string,
   data: UpdateInvoiceInput,
+  userId: string,
 ): Promise<Invoice> => {
-  return await prisma.invoice.update({
+  const invoice = await prisma.invoice.update({
     where: { id, accountId },
     data: {
       ...data,
@@ -83,6 +100,16 @@ const updateInvoice = async (
     },
     include: { sale: { include: { customer: true, saleItems: true, saleServices: true } } },
   });
+
+  await ActivityLogService.createLog({
+    userId,
+    module: SystemModule.INVOICE,
+    action: SystemAction.UPDATE,
+    details: `Updated invoice: ${invoice.id}`,
+    accountId,
+  });
+
+  return invoice;
 };
 
 const deleteInvoice = async (id: string, accountId: string, userId: string) => {

@@ -628,6 +628,8 @@ enum SystemModule {
   NOTIFICATION
   ACTIVITY_LOG
   TRASH
+  STOCK
+  STAFF
 }
 
 enum SystemAction {
