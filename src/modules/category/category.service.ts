@@ -1,10 +1,19 @@
-import { type Category, SystemAction, SystemModule, type Prisma } from "../../generated/prisma/index.js";
+import {
+  type Category,
+  SystemAction,
+  SystemModule,
+  type Prisma,
+} from "../../generated/prisma/index.js";
 import prisma from "../../shared/utils/prisma.js";
 import type { CreateCategoryInput, UpdateCategoryInput } from "./category.validation.js";
 import { TrashService } from "../trash/trash.service.js";
 import { ActivityLogService } from "../activityLog/activityLog.service.js";
 
-const createCategory = async (data: CreateCategoryInput, accountId: string, userId: string): Promise<Category> => {
+const createCategory = async (
+  data: CreateCategoryInput,
+  accountId: string,
+  userId: string,
+): Promise<Category> => {
   const category = await prisma.category.create({ data: { ...data, accountId } });
 
   await ActivityLogService.createLog({

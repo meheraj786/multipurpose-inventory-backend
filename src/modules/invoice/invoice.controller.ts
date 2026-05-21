@@ -63,7 +63,12 @@ const updateInvoice = async (req: Request, res: Response, next: NextFunction) =>
     const id = req.params.id as string;
     const { accountId, ...rest } = req.body;
 
-    const result = await InvoiceService.updateInvoice(id, accountId, rest, req?.user?.userId as string);
+    const result = await InvoiceService.updateInvoice(
+      id,
+      accountId,
+      rest,
+      req?.user?.userId as string,
+    );
 
     sendResponse(res, {
       statusCode: httpStatus.OK,

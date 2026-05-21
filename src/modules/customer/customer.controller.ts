@@ -5,7 +5,11 @@ import { CustomerService } from "./customer.service.js";
 
 const createCustomer = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const result = await CustomerService.createCustomer(req.body, req?.user?.accountId as string, req?.user?.userId as string);
+    const result = await CustomerService.createCustomer(
+      req.body,
+      req?.user?.accountId as string,
+      req?.user?.userId as string,
+    );
 
     sendResponse(res, {
       statusCode: httpStatus.CREATED,
@@ -62,7 +66,12 @@ const updateCustomer = async (req: Request, res: Response, next: NextFunction) =
     const id = req.params.id as string;
     const { accountId, ...rest } = req.body;
 
-    const result = await CustomerService.updateCustomer(id, accountId, rest, req?.user?.userId as string);
+    const result = await CustomerService.updateCustomer(
+      id,
+      accountId,
+      rest,
+      req?.user?.userId as string,
+    );
 
     sendResponse(res, {
       statusCode: httpStatus.OK,

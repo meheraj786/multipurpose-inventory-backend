@@ -6,7 +6,11 @@ import { SubCategoryService } from "./subCategory.service.js";
 const createSubCategory = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const accountId = req?.user?.accountId as string;
-    const result = await SubCategoryService.createSubCategory(req.body, accountId, req?.user?.userId as string);
+    const result = await SubCategoryService.createSubCategory(
+      req.body,
+      accountId,
+      req?.user?.userId as string,
+    );
 
     sendResponse(res, {
       statusCode: httpStatus.CREATED,
@@ -58,7 +62,12 @@ const updateSubCategory = async (req: Request, res: Response, next: NextFunction
     const id = req.params.id as string;
     const accountId = req?.user?.accountId as string;
 
-    const result = await SubCategoryService.updateSubCategory(id, accountId, req.body, req?.user?.userId as string);
+    const result = await SubCategoryService.updateSubCategory(
+      id,
+      accountId,
+      req.body,
+      req?.user?.userId as string,
+    );
 
     sendResponse(res, {
       statusCode: httpStatus.OK,

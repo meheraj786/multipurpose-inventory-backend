@@ -5,7 +5,11 @@ import httpStatus from "http-status";
 
 const createCategory = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const result = await CategoryService.createCategory( req.body, req?.user?.accountId as string, req?.user?.userId as string);
+    const result = await CategoryService.createCategory(
+      req.body,
+      req?.user?.accountId as string,
+      req?.user?.userId as string,
+    );
 
     sendResponse(res, {
       statusCode: httpStatus.CREATED,
@@ -58,7 +62,12 @@ const updateCategory = async (req: Request, res: Response, next: NextFunction) =
     const id = req.params.id as string;
     const accountId = req?.user?.accountId as string;
 
-    const result = await CategoryService.updateCategory(id, accountId as string, req.body, req?.user?.userId as string);
+    const result = await CategoryService.updateCategory(
+      id,
+      accountId as string,
+      req.body,
+      req?.user?.userId as string,
+    );
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
