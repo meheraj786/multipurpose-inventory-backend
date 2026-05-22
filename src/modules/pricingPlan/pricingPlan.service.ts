@@ -71,20 +71,20 @@ const getSinglePricingPlan = async (id: string): Promise<PricingPlan> => {
 const updatePricingPlan = async (
   id: string,
   data: UpdatePricingPlanInput,
-  developerUserId: string,
+  // developerUserId: string,
 ): Promise<PricingPlan> => {
   const plan = await prisma.pricingPlan.findUnique({ where: { id } });
   if (!plan) throw new Error("Pricing plan not found");
 
   const updated = await prisma.pricingPlan.update({ where: { id }, data });
 
-  await ActivityLogService.createLog({
-    userId: developerUserId,
-    module: SystemModule.PRICING_PLAN,
-    action: SystemAction.UPDATE,
-    details: `Updated pricing plan: ${plan.name}`,
-    accountId: "SYSTEM",
-  });
+  // await ActivityLogService.createLog({
+  //   userId: developerUserId,
+  //   module: SystemModule.PRICING_PLAN,
+  //   action: SystemAction.UPDATE,
+  //   details: `Updated pricing plan: ${plan.name}`,
+  //   accountId: "SYSTEM",
+  // });
 
   return updated;
 };

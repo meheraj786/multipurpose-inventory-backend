@@ -11,10 +11,9 @@ const validateRequest = (schema: AnyZodObject) => {
         cookies: req.cookies,
       });
 
-      req.body = parsedData.body;
-      req.params = parsedData.params;
-      if (parsedData.query) {
-        req.body._query = parsedData.query;
+      req.body = parsedData.body ?? req.body;
+      if (parsedData.params) {
+        req.params = parsedData.params;
       }
 
       next();
