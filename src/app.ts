@@ -42,8 +42,7 @@ app.use(cookieParser());
 app.use(
   pinoHttp({
     logger,
-    customSuccessMessage: (req, res) =>
-      `${req.method} ${req.url} ${res.statusCode}`,
+    customSuccessMessage: (req, res) => `${req.method} ${req.url} ${res.statusCode}`,
     customErrorMessage: (req, res, err) =>
       `${req.method} ${req.url} ${res.statusCode} - ${err.message}`,
     customLogLevel: (_req, res, err) => {
@@ -67,46 +66,16 @@ app.get("/api/v1/health", (_req, res) => {
 
 // ==================== API ROUTES ====================
 app.use("/api/v1/auth", AuthRoutes);
-app.use(
-  "/api/v1/categories",
-  authenticate,
-  checkPermission("CATEGORY"),
-  CategoryRoutes,
-);
-app.use(
-  "/api/v1/sub-categories",
-  authenticate,
-  checkPermission("SUBCATEGORY"),
-  SubCategoryRoutes,
-);
-app.use(
-  "/api/v1/customers",
-  authenticate,
-  checkPermission("CUSTOMER"),
-  CustomerRoutes,
-);
+app.use("/api/v1/categories", authenticate, checkPermission("CATEGORY"), CategoryRoutes);
+app.use("/api/v1/sub-categories", authenticate, checkPermission("SUBCATEGORY"), SubCategoryRoutes);
+app.use("/api/v1/customers", authenticate, checkPermission("CUSTOMER"), CustomerRoutes);
 app.use("/api/v1/sales", authenticate, checkPermission("SALE"), SaleRoutes);
-app.use(
-  "/api/v1/invoices",
-  authenticate,
-  checkPermission("INVOICE"),
-  InvoiceRoutes,
-);
+app.use("/api/v1/invoices", authenticate, checkPermission("INVOICE"), InvoiceRoutes);
 app.use("/api/v1/trash", authenticate, checkPermission("TRASH"), TrashRoutes);
-app.use(
-  "/api/v1/activity-logs",
-  authenticate,
-  checkPermission("ACTIVITY_LOG"),
-  ActivityLogRoutes,
-);
+app.use("/api/v1/activity-logs", authenticate, checkPermission("ACTIVITY_LOG"), ActivityLogRoutes);
 app.use("/api/v1/staff", authenticate, checkPermission("STAFF"), StaffRoutes);
 app.use("/api/v1/pricing-plans", PricingPlanRoutes);
-app.use(
-  "/api/v1/services",
-  authenticate,
-  checkPermission("SERVICE"),
-  ServiceRoutes,
-);
+app.use("/api/v1/services", authenticate, checkPermission("SERVICE"), ServiceRoutes);
 
 // ==================== ERROR HANDLING ====================
 app.use(notFoundHandler);
