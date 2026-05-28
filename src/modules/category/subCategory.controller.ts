@@ -42,7 +42,7 @@ const getAllSubCategories = async (req: Request, res: Response, next: NextFuncti
       statusCode: httpStatus.OK,
       success: true,
       message: "Sub-categories fetched successfully",
-      data: result, 
+      data: result,
     });
   } catch (error) {
     next(error);
