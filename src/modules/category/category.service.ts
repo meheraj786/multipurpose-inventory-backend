@@ -9,6 +9,14 @@ import type { CreateCategoryInput, UpdateCategoryInput } from "./category.valida
 import { TrashService } from "../trash/trash.service.js";
 import { ActivityLogService } from "../activityLog/activityLog.service.js";
 
+export type CategoryQueryParams = {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+};
+
 const createCategory = async (
   data: CreateCategoryInput,
   accountId: string,
@@ -27,11 +35,38 @@ const createCategory = async (
   return category;
 };
 
-const getAllCategories = async (accountId: string) => {
-  return await prisma.category.findMany({
-    where: { accountId, isDeleted: false },
-    include: { subCategories: true, services: true },
-  });
+const getAllCategories = async (accountId: string, query: CategoryQueryParams = {}) => {
+  const {
+    page = 1,
+    pageSize = 10,
+    search,
+    sortBy = "createdAt",
+    sortOrder = "desc",
+  } = query;
+
+  const allowedSortFields = ["name", "createdAt", "updatedAt"];
+  const safeSortBy = allowedSortFields.includes(sortBy) ? sortBy : "createdAt";
+
+  const where: Prisma.CategoryWhereInput = {
+    accountId,
+    isDeleted: false,
+    ...(search && {
+      name: { contains: search, mode: "insensitive" },
+    }),
+  };
+
+  const [data, total] = await prisma.$transaction([
+    prisma.category.findMany({
+      where,
+      include: { subCategories: true, services: true },
+      orderBy: { [safeSortBy]: sortOrder },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+    prisma.category.count({ where }),
+  ]);
+
+  return { data, total, page, pageSize };
 };
 
 const getSingleCategory = async (id: string, accountId: string) => {

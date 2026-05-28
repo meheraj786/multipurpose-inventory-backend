@@ -26,7 +26,15 @@ const getAllCategories = async (req: Request, res: Response, next: NextFunction)
   try {
     const accountId = req?.user?.accountId as string;
 
-    const result = await CategoryService.getAllCategories(accountId);
+    const query = {
+      page: req.query.page ? Number(req.query.page) : undefined,
+      pageSize: req.query.pageSize ? Number(req.query.pageSize) : undefined,
+      search: req.query.search as string | undefined,
+      sortBy: req.query.sortBy as string | undefined,
+      sortOrder: req.query.sortOrder as "asc" | "desc" | undefined,
+    };
+
+    const result = await CategoryService.getAllCategories(accountId, query);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
