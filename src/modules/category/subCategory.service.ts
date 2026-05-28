@@ -9,6 +9,15 @@ import { TrashService } from "../trash/trash.service.js";
 import { ActivityLogService } from "../activityLog/activityLog.service.js";
 import type { CreateSubCategoryInput, UpdateSubCategoryInput } from "./subCategory.validation.js";
 
+export type SubCategoryQueryParams = {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+  categoryId?: string; // filter by parent category
+};
+
 const createSubCategory = async (
   data: CreateSubCategoryInput,
   accountId: string,
@@ -27,12 +36,38 @@ const createSubCategory = async (
   return subCategory;
 };
 
-const getAllSubCategories = async (accountId: string) => {
-  return await prisma.subCategory.findMany({
-    where: { accountId, isDeleted: false },
-    include: { category: true },
-    orderBy: { createdAt: "desc" },
-  });
+const getAllSubCategories = async (accountId: string, query: SubCategoryQueryParams = {}) => {
+  const {
+    page = 1,
+    pageSize = 10,
+    search,
+    sortBy = "createdAt",
+    sortOrder = "desc",
+    categoryId,
+  } = query;
+
+  const allowedSortFields = ["name", "createdAt", "updatedAt"];
+  const safeSortBy = allowedSortFields.includes(sortBy) ? sortBy : "createdAt";
+
+  const where: Prisma.SubCategoryWhereInput = {
+    accountId,
+    isDeleted: false,
+    ...(search && { name: { contains: search, mode: "insensitive" } }),
+    ...(categoryId && { categoryId }),
+  };
+
+  const [data, total] = await prisma.$transaction([
+    prisma.subCategory.findMany({
+      where,
+      include: { category: true },
+      orderBy: { [safeSortBy]: sortOrder },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+    prisma.subCategory.count({ where }),
+  ]);
+
+  return { data, total, page, pageSize };
 };
 
 const getSingleSubCategory = async (id: string, accountId: string) => {

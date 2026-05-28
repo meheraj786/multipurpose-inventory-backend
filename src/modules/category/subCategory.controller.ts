@@ -26,13 +26,23 @@ const createSubCategory = async (req: Request, res: Response, next: NextFunction
 const getAllSubCategories = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const accountId = req?.user?.accountId as string;
-    const result = await SubCategoryService.getAllSubCategories(accountId);
+
+    const query = {
+      page: req.query.page ? Number(req.query.page) : undefined,
+      pageSize: req.query.pageSize ? Number(req.query.pageSize) : undefined,
+      search: req.query.search as string | undefined,
+      sortBy: req.query.sortBy as string | undefined,
+      sortOrder: req.query.sortOrder as "asc" | "desc" | undefined,
+      categoryId: req.query.categoryId as string | undefined,
+    };
+
+    const result = await SubCategoryService.getAllSubCategories(accountId, query);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,
       message: "Sub-categories fetched successfully",
-      data: result,
+      data: result, 
     });
   } catch (error) {
     next(error);
@@ -83,7 +93,8 @@ const updateSubCategory = async (req: Request, res: Response, next: NextFunction
 const deleteSubCategory = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
-    const { accountId, userId } = req.body;
+    const accountId = req?.user?.accountId as string;
+    const userId = req?.user?.userId as string;
 
     const result = await SubCategoryService.deleteSubCategory(id, accountId, userId);
 

@@ -36,13 +36,7 @@ const createCategory = async (
 };
 
 const getAllCategories = async (accountId: string, query: CategoryQueryParams = {}) => {
-  const {
-    page = 1,
-    pageSize = 10,
-    search,
-    sortBy = "createdAt",
-    sortOrder = "desc",
-  } = query;
+  const { page = 1, pageSize = 10, search, sortBy = "createdAt", sortOrder = "desc" } = query;
 
   const allowedSortFields = ["name", "createdAt", "updatedAt"];
   const safeSortBy = allowedSortFields.includes(sortBy) ? sortBy : "createdAt";
