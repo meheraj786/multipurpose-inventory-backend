@@ -2,6 +2,13 @@ import { type Prisma, SystemAction, type SystemModule } from "../../generated/pr
 import prisma from "../../shared/utils/prisma.js";
 import { ActivityLogService } from "../activityLog/activityLog.service.js";
 
+export type TrashQueryParams = {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  moduleName?: string;
+};
+
 const addToTrash = async ({
   moduleName,
   itemName,
@@ -20,11 +27,26 @@ const addToTrash = async ({
   });
 };
 
-const getTrashByAccount = async (accountId: string) => {
-  return await prisma.trash.findMany({
-    where: { accountId },
-    orderBy: { date: "desc" },
-  });
+const getTrashByAccount = async (accountId: string, query: TrashQueryParams = {}) => {
+  const { page = 1, pageSize = 20, search, moduleName } = query;
+
+  const where: Prisma.TrashWhereInput = {
+    accountId,
+    ...(search && { itemName: { contains: search, mode: "insensitive" } }),
+    ...(moduleName && { moduleName: moduleName as SystemModule }),
+  };
+
+  const [data, total] = await prisma.$transaction([
+    prisma.trash.findMany({
+      where,
+      orderBy: { date: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+    prisma.trash.count({ where }),
+  ]);
+
+  return { data, total, page, pageSize };
 };
 
 const restoreItem = async (trashId: string, accountId: string, userId: string) => {
@@ -47,11 +69,8 @@ const restoreItem = async (trashId: string, accountId: string, userId: string) =
     };
 
     const prismaModelName = modelMap[trashItem.moduleName];
-
     if (!prismaModelName) {
-      throw new Error(
-        `No model mapping found for: ${trashItem.moduleName} — module may not exist yet`,
-      );
+      throw new Error(`No model mapping found for: ${trashItem.moduleName}`);
     }
 
     const model = tx[prismaModelName] as unknown as {

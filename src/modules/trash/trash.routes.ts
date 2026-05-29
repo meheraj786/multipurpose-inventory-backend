@@ -5,5 +5,6 @@ const router: Router = Router();
 
 router.get("/", TrashController.getTrash);
 router.post("/restore/:id", TrashController.restoreItem);
+router.delete("/:id", TrashController.permanentDelete);
 
 export const TrashRoutes: Router = router;

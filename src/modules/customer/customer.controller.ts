@@ -26,17 +26,22 @@ const getAllCustomers = async (req: Request, res: Response, next: NextFunction) 
   try {
     const accountId = req?.user?.accountId as string;
     const page = parseInt(req.query.page as string, 10) || 1;
-    const limit = parseInt(req.query.limit as string, 10) || 10;
+    const pageSize = parseInt(req.query.pageSize as string, 10) || 10;
     const search = req.query.search as string | undefined;
 
-    const result = await CustomerService.getAllCustomers(accountId, page, limit, search);
+    const result = await CustomerService.getAllCustomers(accountId, page, pageSize, search);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,
       message: "Customers fetched successfully",
       data: result.data,
-      meta: result.meta,
+      meta: {
+        page: result.meta.page,
+        limit: result.meta.pageSize,
+        total: result.meta.total,
+        totalPage: result.meta.totalPages,
+      },
     });
   } catch (error) {
     next(error);
@@ -61,34 +66,30 @@ const getSingleCustomer = async (req: Request, res: Response, next: NextFunction
   }
 };
 
-const updateCustomer = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const id = req.params.id as string;
-    const { accountId, ...rest } = req.body;
+const updateCustomer = async (req: Request, res: Response, _next: NextFunction) => {
+  const id = req.params.id as string;
+  const accountId = req?.user?.accountId as string;
 
-    const result = await CustomerService.updateCustomer(
-      id,
-      accountId,
-      rest,
-      req?.user?.userId as string,
-    );
+  const result = await CustomerService.updateCustomer(
+    id,
+    accountId,
+    req.body,
+    req?.user?.userId as string,
+  );
 
-    sendResponse(res, {
-      statusCode: httpStatus.OK,
-      success: true,
-      message: "Customer updated successfully",
-      data: result,
-    });
-  } catch (error) {
-    next(error);
-  }
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Customer updated successfully",
+    data: result,
+  });
 };
 
 const deleteCustomer = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
     const accountId = req?.user?.accountId as string;
-    const userId = req.body.userId as string;
+    const userId = req?.user?.userId as string;
 
     const result = await CustomerService.deleteCustomer(id, accountId, userId);
 

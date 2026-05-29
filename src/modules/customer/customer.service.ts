@@ -30,10 +30,10 @@ const createCustomer = async (
 const getAllCustomers = async (
   accountId: string,
   page: number = 1,
-  limit: number = 10,
+  pageSize: number = 10,
   search?: string,
 ) => {
-  const skip = (page - 1) * limit;
+  const skip = (page - 1) * pageSize;
 
   const where: Prisma.CustomerWhereInput = {
     accountId,
@@ -50,7 +50,7 @@ const getAllCustomers = async (
     prisma.customer.findMany({
       where,
       skip,
-      take: limit,
+      take: pageSize,
       orderBy: { createdAt: "desc" },
     }),
     prisma.customer.count({ where }),
@@ -61,8 +61,8 @@ const getAllCustomers = async (
     meta: {
       total,
       page,
-      limit,
-      totalPages: Math.ceil(total / limit),
+      pageSize,
+      totalPages: Math.ceil(total / pageSize),
     },
   };
 };
