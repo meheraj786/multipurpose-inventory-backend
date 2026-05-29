@@ -36,8 +36,8 @@ export const setAccessTokenCookie = (res: import("express").Response, token: str
   const isProd = process.env.NODE_ENV === "production";
   res.cookie("accessToken", token, {
     httpOnly: true,
-    secure: true,          // always true in prod (HTTPS required for sameSite: none)
-    sameSite: isProd ? "none" : "lax",  // "none" is required for cross-domain
+    secure: true, // always true in prod (HTTPS required for sameSite: none)
+    sameSite: isProd ? "none" : "lax", // "none" is required for cross-domain
     maxAge: 15 * 60 * 1000,
   });
 };
