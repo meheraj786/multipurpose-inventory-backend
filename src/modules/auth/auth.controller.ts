@@ -19,10 +19,6 @@ const register = async (req: Request, res: Response, next: NextFunction) => {
   }
 };
 
-
-
-
-
 const logout = async (_req: Request, res: Response, next: NextFunction) => {
   try {
     clearAuthCookies(res);
