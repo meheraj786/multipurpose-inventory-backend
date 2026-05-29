@@ -33,28 +33,31 @@ export const verifyRefreshToken = (token: string): JwtPayload => {
 };
 
 export const setAccessTokenCookie = (res: import("express").Response, token: string) => {
+  const isProd = process.env.NODE_ENV === "production";
   res.cookie("accessToken", token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-    maxAge: 15 * 60 * 1000, // 15 minutes
+    secure: true,          // always true in prod (HTTPS required for sameSite: none)
+    sameSite: isProd ? "none" : "lax",  // "none" is required for cross-domain
+    maxAge: 15 * 60 * 1000,
   });
 };
 
 export const setRefreshTokenCookie = (res: import("express").Response, token: string) => {
+  const isProd = process.env.NODE_ENV === "production";
   res.cookie("refreshToken", token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    secure: true,
+    sameSite: isProd ? "none" : "lax",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 };
 
 export const clearAuthCookies = (res: import("express").Response) => {
+  const isProd = process.env.NODE_ENV === "production";
   const cookieOptions = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict" as const,
+    secure: true,
+    sameSite: isProd ? ("none" as const) : ("lax" as const),
   };
   res.clearCookie("accessToken", cookieOptions);
   res.clearCookie("refreshToken", cookieOptions);
