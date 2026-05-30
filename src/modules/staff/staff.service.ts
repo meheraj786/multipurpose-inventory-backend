@@ -18,9 +18,7 @@ const createStaff = async (
   accountId: string,
   adminUserId: string,
 ): Promise<Omit<User, "password">> => {
-  const existing = await prisma.user.findUnique({
-    where: { email: data.email },
-  });
+  const existing = await prisma.user.findUnique({ where: { email: data.email } });
   if (existing) throw new Error("Email already in use");
 
   const account = await prisma.account.findFirst({
@@ -47,6 +45,7 @@ const createStaff = async (
   const staff = await prisma.user.create({
     data: {
       email: data.email,
+      name: data.name,
       password: hashedPassword,
       accountId,
       role: "STAFF",
@@ -151,11 +150,7 @@ const updateStaff = async (
   return updated;
 };
 
-const deleteStaff = async (
-  id: string,
-  accountId: string,
-  adminUserId: string,
-) => {
+const deleteStaff = async (id: string, accountId: string, adminUserId: string) => {
   const staff = await prisma.user.findFirst({
     where: { id, accountId, role: "STAFF", isDeleted: false },
   });
@@ -178,51 +173,45 @@ const deleteStaff = async (
 
   return result;
 };
-
 const updatePermissions = async (
-  id: string,
+  staffId: string,
   accountId: string,
   data: UpdatePermissionsInput,
   adminUserId: string,
 ) => {
   const staff = await prisma.user.findFirst({
-    where: { id, accountId, role: "STAFF", isDeleted: false },
+    where: { id: staffId, accountId, role: "STAFF", isDeleted: false },
   });
 
   if (!staff) throw new Error("Staff member not found");
 
-  // Delete existing permissions
-  await prisma.permission.deleteMany({
-    where: { userId: id },
-  });
-
-  // Create new permissions
-  if (data.permissions && data.permissions.length > 0) {
-    await prisma.permission.createMany({
-      data: data.permissions.map((perm) => ({
-        userId: id,
-        module: perm.module,
-        actions: perm.actions,
-      })),
+  const result = await prisma.$transaction(async (tx) => {
+    await tx.permission.deleteMany({
+      where: { userId: staffId },
     });
-  }
 
-  // Fetch updated user with permissions
-  const updated = await prisma.user.findFirst({
-    where: { id },
-    omit: { password: true },
-    include: { permissions: true },
+    if (data.permissions.length > 0) {
+      return await tx.permission.createMany({
+        data: data.permissions.map((p) => ({
+          userId: staffId,
+          accountId: accountId,
+          module: p.module,
+        actions: p.actions ,
+        })),
+      });
+    }
+    return { count: 0 };
   });
 
   await ActivityLogService.createLog({
     userId: adminUserId,
-    module: SystemModule.PERMISSION,
+    module: SystemModule.STAFF,
     action: SystemAction.UPDATE,
-    details: `Updated permissions for staff member: ${staff.email}`,
+    details: `Updated permissions for staff: ${staff.email}`,
     accountId,
   });
 
-  return updated;
+  return result;
 };
 
 export const StaffService = {

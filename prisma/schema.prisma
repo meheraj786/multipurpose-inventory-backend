@@ -16,6 +16,7 @@ model User {
   account     Account      @relation(fields: [accountId], references: [id])
   activityLogs ActivityLog[]
   email       String       @unique
+  name        String?
   password    String
   role        UserRole     @default(STAFF)
   isDeleted   Boolean      @default(false)
@@ -80,6 +81,7 @@ model Permission {
   id        String         @id @default(uuid())
   userId    String
   user      User           @relation(fields: [userId], references: [id])
+  name        String?
   accountId String
   account   Account        @relation(fields: [accountId], references: [id])
   module    SystemModule

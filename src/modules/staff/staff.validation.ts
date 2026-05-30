@@ -30,9 +30,7 @@ const updatePermissionsZodSchema = z.object({
 
 export type CreateStaffInput = z.infer<typeof createStaffZodSchema>["body"];
 export type UpdateStaffInput = z.infer<typeof updateStaffZodSchema>["body"];
-export type UpdatePermissionsInput = z.infer<
-  typeof updatePermissionsZodSchema
->["body"];
+export type UpdatePermissionsInput = z.infer<typeof updatePermissionsZodSchema>["body"];
 
 export const StaffValidation = {
   createStaffZodSchema,
