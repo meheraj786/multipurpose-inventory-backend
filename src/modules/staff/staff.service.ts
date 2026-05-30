@@ -196,7 +196,7 @@ const updatePermissions = async (
           userId: staffId,
           accountId: accountId,
           module: p.module,
-        actions: p.actions ,
+          actions: p.actions,
         })),
       });
     }
