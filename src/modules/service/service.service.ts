@@ -78,7 +78,20 @@ const getAllServices = async (
 const getSingleService = async (id: string, accountId: string) => {
   const service = await prisma.service.findFirst({
     where: { id, accountId, isDeleted: false },
-    include: { category: true, subCategory: true },
+    include: {
+      category: true,
+      subCategory: true,
+      saleServices: {
+        include: {
+          sale: {
+            include: {
+              customer: { select: { id: true, name: true, phone: true } },
+            },
+          },
+        },
+        orderBy: { sale: { createdAt: "desc" } },
+      },
+    },
   });
 
   if (!service) throw new Error("Service not found");
