@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SystemAction, SystemModule } from "../../generated/prisma/index.js";
 
 const createStaffZodSchema = z.object({
   body: z.object({
@@ -21,8 +22,8 @@ const updatePermissionsZodSchema = z.object({
   body: z.object({
     permissions: z.array(
       z.object({
-        module: z.string(),
-        actions: z.array(z.string()),
+        module: z.nativeEnum(SystemModule),
+        actions: z.array(z.nativeEnum(SystemAction)),
       }),
     ),
   }),
