@@ -17,10 +17,25 @@ const updateStaffZodSchema = z.object({
   }),
 });
 
+const updatePermissionsZodSchema = z.object({
+  body: z.object({
+    permissions: z.array(
+      z.object({
+        module: z.string(),
+        actions: z.array(z.string()),
+      }),
+    ),
+  }),
+});
+
 export type CreateStaffInput = z.infer<typeof createStaffZodSchema>["body"];
 export type UpdateStaffInput = z.infer<typeof updateStaffZodSchema>["body"];
+export type UpdatePermissionsInput = z.infer<
+  typeof updatePermissionsZodSchema
+>["body"];
 
 export const StaffValidation = {
   createStaffZodSchema,
   updateStaffZodSchema,
+  updatePermissionsZodSchema,
 };

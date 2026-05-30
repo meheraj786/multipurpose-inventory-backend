@@ -8,7 +8,11 @@ const createStaff = async (req: Request, res: Response, next: NextFunction) => {
     const accountId = req.user?.accountId as string;
     const adminUserId = req.user?.userId as string;
 
-    const result = await StaffService.createStaff(req.body, accountId, adminUserId);
+    const result = await StaffService.createStaff(
+      req.body,
+      accountId,
+      adminUserId,
+    );
 
     sendResponse(res, {
       statusCode: httpStatus.CREATED,
@@ -28,7 +32,12 @@ const getAllStaff = async (req: Request, res: Response, next: NextFunction) => {
     const limit = parseInt(req.query.limit as string, 10) || 10;
     const search = req.query.search as string | undefined;
 
-    const result = await StaffService.getAllStaff(accountId, page, limit, search);
+    const result = await StaffService.getAllStaff(
+      accountId,
+      page,
+      limit,
+      search,
+    );
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -42,7 +51,11 @@ const getAllStaff = async (req: Request, res: Response, next: NextFunction) => {
   }
 };
 
-const getSingleStaff = async (req: Request, res: Response, next: NextFunction) => {
+const getSingleStaff = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const id = req.params.id as string;
     const accountId = req.user?.accountId as string;
@@ -66,7 +79,12 @@ const updateStaff = async (req: Request, res: Response, next: NextFunction) => {
     const accountId = req.user?.accountId as string;
     const adminUserId = req.user?.userId as string;
 
-    const result = await StaffService.updateStaff(id, accountId, req.body, adminUserId);
+    const result = await StaffService.updateStaff(
+      id,
+      accountId,
+      req.body,
+      adminUserId,
+    );
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -98,10 +116,39 @@ const deleteStaff = async (req: Request, res: Response, next: NextFunction) => {
   }
 };
 
+const updatePermissions = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const id = req.params.id as string;
+    const accountId = req.user?.accountId as string;
+    const adminUserId = req.user?.userId as string;
+
+    const result = await StaffService.updatePermissions(
+      id,
+      accountId,
+      req.body,
+      adminUserId,
+    );
+
+    sendResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: "Permissions updated successfully",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const StaffController = {
   createStaff,
   getAllStaff,
   getSingleStaff,
   updateStaff,
   deleteStaff,
+  updatePermissions,
 };

@@ -7,14 +7,20 @@ import {
 } from "../../generated/prisma/index.js";
 import prisma from "../../shared/utils/prisma.js";
 import { ActivityLogService } from "../activityLog/activityLog.service.js";
-import type { CreateStaffInput, UpdateStaffInput } from "./staff.validation.js";
+import type {
+  CreateStaffInput,
+  UpdateStaffInput,
+  UpdatePermissionsInput,
+} from "./staff.validation.js";
 
 const createStaff = async (
   data: CreateStaffInput,
   accountId: string,
   adminUserId: string,
 ): Promise<Omit<User, "password">> => {
-  const existing = await prisma.user.findUnique({ where: { email: data.email } });
+  const existing = await prisma.user.findUnique({
+    where: { email: data.email },
+  });
   if (existing) throw new Error("Email already in use");
 
   const account = await prisma.account.findFirst({
@@ -145,7 +151,11 @@ const updateStaff = async (
   return updated;
 };
 
-const deleteStaff = async (id: string, accountId: string, adminUserId: string) => {
+const deleteStaff = async (
+  id: string,
+  accountId: string,
+  adminUserId: string,
+) => {
   const staff = await prisma.user.findFirst({
     where: { id, accountId, role: "STAFF", isDeleted: false },
   });
@@ -169,10 +179,57 @@ const deleteStaff = async (id: string, accountId: string, adminUserId: string) =
   return result;
 };
 
+const updatePermissions = async (
+  id: string,
+  accountId: string,
+  data: UpdatePermissionsInput,
+  adminUserId: string,
+) => {
+  const staff = await prisma.user.findFirst({
+    where: { id, accountId, role: "STAFF", isDeleted: false },
+  });
+
+  if (!staff) throw new Error("Staff member not found");
+
+  // Delete existing permissions
+  await prisma.permission.deleteMany({
+    where: { userId: id },
+  });
+
+  // Create new permissions
+  if (data.permissions && data.permissions.length > 0) {
+    await prisma.permission.createMany({
+      data: data.permissions.map((perm) => ({
+        userId: id,
+        module: perm.module,
+        actions: perm.actions,
+      })),
+    });
+  }
+
+  // Fetch updated user with permissions
+  const updated = await prisma.user.findFirst({
+    where: { id },
+    omit: { password: true },
+    include: { permissions: true },
+  });
+
+  await ActivityLogService.createLog({
+    userId: adminUserId,
+    module: SystemModule.PERMISSION,
+    action: SystemAction.UPDATE,
+    details: `Updated permissions for staff member: ${staff.email}`,
+    accountId,
+  });
+
+  return updated;
+};
+
 export const StaffService = {
   createStaff,
   getAllStaff,
   getSingleStaff,
   updateStaff,
   deleteStaff,
+  updatePermissions,
 };
