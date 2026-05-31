@@ -14,8 +14,18 @@ const createService = async (
   userId: string,
   accountId: string,
 ): Promise<Service> => {
+  const serviceData = { ...data, accountId };
+
+  if (
+    !serviceData.subCategoryId ||
+    serviceData.subCategoryId === "" ||
+    serviceData.subCategoryId === "null"
+  ) {
+    delete serviceData.subCategoryId;
+  }
+
   const service = await prisma.service.create({
-    data: { ...data, accountId },
+    data: serviceData,
     include: { category: true, subCategory: true },
   });
 

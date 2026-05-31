@@ -38,7 +38,6 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// ==================== LOGGING ====================
 app.use(
   pinoHttp({
     logger,
@@ -53,8 +52,6 @@ app.use(
   }),
 );
 
-// ==================== HEALTH CHECK ====================
-// Must be before other routes — this is what UptimeRobot will ping
 app.get("/api/v1/health", (_req, res) => {
   res.status(200).json({
     success: true,
