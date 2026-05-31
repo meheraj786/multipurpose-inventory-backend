@@ -16,17 +16,9 @@ router.post(
   ProductController.createProduct,
 );
 
-router.get(
-  "/",
-  checkPermission("PRODUCT"),
-  ProductController.getAllProducts,
-);
+router.get("/", checkPermission("PRODUCT"), ProductController.getAllProducts);
 
-router.get(
-  "/:id",
-  checkPermission("PRODUCT"),
-  ProductController.getSingleProduct,
-);
+router.get("/:id", checkPermission("PRODUCT"), ProductController.getSingleProduct);
 
 router.patch(
   "/:id",
@@ -35,11 +27,7 @@ router.patch(
   ProductController.updateProduct,
 );
 
-router.delete(
-  "/:id",
-  checkPermission("PRODUCT"),
-  ProductController.deleteProduct,
-);
+router.delete("/:id", checkPermission("PRODUCT"), ProductController.deleteProduct);
 
 router.post(
   "/:id/stock-in",
@@ -48,10 +36,6 @@ router.post(
   ProductController.stockIn,
 );
 
-router.get(
-  "/:id/stock-summary",
-  checkPermission("PRODUCT"),
-  ProductController.getStockSummary,
-);
+router.get("/:id/stock-summary", checkPermission("PRODUCT"), ProductController.getStockSummary);
 
 export const ProductRoutes: Router = router;

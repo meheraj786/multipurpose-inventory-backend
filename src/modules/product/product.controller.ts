@@ -3,20 +3,12 @@ import httpStatus from "http-status";
 import { sendResponse } from "../../shared/utils/response.js";
 import { ProductService } from "./product.service.js";
 
-const createProduct = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const createProduct = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const accountId = req.user?.accountId as string;
     const userId = req.user?.userId as string;
 
-    const result = await ProductService.createProduct(
-      req.body,
-      accountId,
-      userId,
-    );
+    const result = await ProductService.createProduct(req.body, accountId, userId);
 
     sendResponse(res, {
       statusCode: httpStatus.CREATED,
@@ -29,11 +21,7 @@ const createProduct = async (
   }
 };
 
-const getAllProducts = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const getAllProducts = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const accountId = req.user?.accountId as string;
     const page = parseInt(req.query.page as string, 10) || 1;
@@ -63,11 +51,7 @@ const getAllProducts = async (
   }
 };
 
-const getSingleProduct = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const getSingleProduct = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
     const accountId = req.user?.accountId as string;
@@ -85,23 +69,14 @@ const getSingleProduct = async (
   }
 };
 
-const updateProduct = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const updateProduct = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
     const accountId = req.user?.accountId as string;
     const userId = req.user?.userId as string;
     const { accountId: _, ...rest } = req.body;
 
-    const result = await ProductService.updateProduct(
-      id,
-      accountId,
-      rest,
-      userId,
-    );
+    const result = await ProductService.updateProduct(id, accountId, rest, userId);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -114,11 +89,7 @@ const updateProduct = async (
   }
 };
 
-const deleteProduct = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const deleteProduct = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
     const accountId = req.user?.accountId as string;
@@ -143,12 +114,7 @@ const stockIn = async (req: Request, res: Response, next: NextFunction) => {
     const accountId = req.user?.accountId as string;
     const userId = req.user?.userId as string;
 
-    const result = await ProductService.stockIn(
-      productId,
-      accountId,
-      userId,
-      req.body,
-    );
+    const result = await ProductService.stockIn(productId, accountId, userId, req.body);
 
     sendResponse(res, {
       statusCode: httpStatus.CREATED,
@@ -161,11 +127,7 @@ const stockIn = async (req: Request, res: Response, next: NextFunction) => {
   }
 };
 
-const getStockSummary = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const getStockSummary = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const productId = req.params.id as string;
     const accountId = req.user?.accountId as string;

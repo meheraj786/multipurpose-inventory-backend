@@ -43,12 +43,11 @@ const stockInZodSchema = z.object({
 
 export type StockInInput = z.infer<typeof stockInZodSchema>["body"];
 
-
 export type CreateProductInput = z.infer<typeof createProductZodSchema>["body"];
 export type UpdateProductInput = z.infer<typeof updateProductZodSchema>["body"];
 
 export const ProductValidation = {
   createProductZodSchema,
   updateProductZodSchema,
-  stockInZodSchema
+  stockInZodSchema,
 };

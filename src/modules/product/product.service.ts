@@ -122,10 +122,7 @@ const getSingleProduct = async (id: string, accountId: string) => {
 
   if (!product) throw new Error("Product not found");
 
-  const totalStock = product.productStocks.reduce(
-    (sum, s) => sum + s.quantity,
-    0,
-  );
+  const totalStock = product.productStocks.reduce((sum, s) => sum + s.quantity, 0);
 
   return { ...product, totalStock };
 };
@@ -165,11 +162,7 @@ const updateProduct = async (
   return updated;
 };
 
-const deleteProduct = async (
-  id: string,
-  accountId: string,
-  userId: string,
-) => {
+const deleteProduct = async (id: string, accountId: string, userId: string) => {
   return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const product = await tx.product.findFirst({
       where: { id, accountId, isDeleted: false },
@@ -255,8 +248,7 @@ const getStockSummary = async (productId: string, accountId: string) => {
   const totalCost = stocks.reduce((sum, s) => sum + Number(s.totalCost), 0);
   const avgPurchasePrice =
     stocks.length > 0
-      ? stocks.reduce((sum, s) => sum + Number(s.purchasePrice), 0) /
-        stocks.length
+      ? stocks.reduce((sum, s) => sum + Number(s.purchasePrice), 0) / stocks.length
       : 0;
 
   return { totalStock, totalCost, avgPurchasePrice };
