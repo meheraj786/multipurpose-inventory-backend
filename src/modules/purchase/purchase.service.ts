@@ -1,4 +1,10 @@
-import { type Prisma, SystemAction, SystemModule } from "../../generated/prisma/index.js";
+import {
+  type Prisma,
+  type ProductStock,
+  type Purchase,
+  SystemAction,
+  SystemModule,
+} from "../../generated/prisma/index.js";
 import prisma from "../../shared/utils/prisma.js";
 import { ActivityLogService } from "../activityLog/activityLog.service.js";
 import { TrashService } from "../trash/trash.service.js";
@@ -9,8 +15,8 @@ const createPurchases = async (data: CreatePurchaseInput, accountId: string, use
 
   return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const created: {
-      purchase: Prisma.Purchase;
-      stock: Prisma.ProductStock;
+      purchase: Purchase;
+      stock: ProductStock;
     }[] = [];
 
     for (const item of data.items) {
@@ -82,7 +88,6 @@ const getAllPurchases = async (accountId: string, page = 1, limit = 10, search?:
         { notes: { contains: search, mode: "insensitive" } },
         { supplier: { name: { contains: search, mode: "insensitive" } } },
       ],
-      include: { supplier: true, productStocks: { include: { product: true } } },
     }),
   };
 

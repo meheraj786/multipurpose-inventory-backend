@@ -24,7 +24,7 @@ const createProduct = async (
   // If unitId was not provided, try to pick a default unit for the account
   let unitIdToUse = data.unitId;
   if (!unitIdToUse) {
-    const defaultUnit = await prisma.unit.findFirst({ where: { accountId } });
+    const defaultUnit = await prisma.unit.findFirst();
     if (!defaultUnit) throw new Error("Unit is required. Create a unit first or provide unitId");
     unitIdToUse = defaultUnit.id;
   }

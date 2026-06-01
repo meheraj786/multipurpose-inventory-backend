@@ -106,9 +106,8 @@ const getSingleSupplier = async (id: string, accountId: string) => {
   if (!supplier) throw new Error("Supplier not found");
 
   const totalPurchaseValue = supplier.purchases.reduce((sum, p) => sum + Number(p.totalCost), 0);
-  const totalDue = supplier.purchases.reduce((sum, p) => sum + Number(p.due ?? 0), 0);
 
-  return { ...supplier, totalPurchaseValue, totalDue };
+  return { ...supplier, totalPurchaseValue };
 };
 
 const updateSupplier = async (
