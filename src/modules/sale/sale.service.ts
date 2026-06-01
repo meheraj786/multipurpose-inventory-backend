@@ -75,8 +75,7 @@ const createSale = async (data: CreateSaleInput, accountId: string) => {
 
     if (data.saleServices && data.saleServices.length > 0) {
       for (const service of data.saleServices) {
-        const total =
-          service.unitPrice * service.quantity - (service.discount ?? 0);
+        const total = service.unitPrice * service.quantity - (service.discount ?? 0);
 
         await tx.saleService.create({
           data: {
@@ -163,11 +162,7 @@ const getSingleSale = async (id: string, accountId: string) => {
   return sale;
 };
 
-const updateSale = async (
-  id: string,
-  accountId: string,
-  data: UpdateSaleInput,
-): Promise<Sale> => {
+const updateSale = async (id: string, accountId: string, data: UpdateSaleInput): Promise<Sale> => {
   const existing = await prisma.sale.findFirst({
     where: { id, accountId, isDeleted: false },
   });

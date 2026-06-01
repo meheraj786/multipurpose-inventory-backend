@@ -9,6 +9,7 @@ const registerZodSchema = z.object({
     type: z.string(),
     model: z.enum(["RETAIL", "SERVICE", "RESTAURANT"]),
     currency: z.enum(["USD", "BDT", "EUR", "GBP"]).optional().default("USD"),
+    pricingPlanId: z.string().optional(),
   }),
 });
 

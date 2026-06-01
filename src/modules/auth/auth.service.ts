@@ -18,6 +18,7 @@ const register = async (data: RegisterInput) => {
         type: data.type,
         model: data.model,
         currency: data.currency,
+        pricingPlanId: data.pricingPlanId || null,
       },
     });
 
