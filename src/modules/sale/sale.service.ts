@@ -26,11 +26,18 @@ const createSale = async (data: CreateSaleInput, accountId: string) => {
 
     if (data.saleItems && data.saleItems.length > 0) {
       for (const item of data.saleItems) {
+        const product = await tx.product.findUnique({
+          where: { id: item.productId },
+        });
+        if (!product) throw new Error(`Product not found: ${item.productId}`);
+
         await tx.saleItem.create({
           data: {
             saleId: sale.id,
             productId: item.productId,
+            unitId: product.unitId,
             quantity: item.quantity,
+            convertedQty: item.quantity,
             purchasePrice: item.purchasePrice,
             sellPrice: item.sellPrice,
             discount: item.discount ?? 0,
@@ -68,7 +75,8 @@ const createSale = async (data: CreateSaleInput, accountId: string) => {
 
     if (data.saleServices && data.saleServices.length > 0) {
       for (const service of data.saleServices) {
-        const total = service.unitPrice * service.quantity - (service.discount ?? 0);
+        const total =
+          service.unitPrice * service.quantity - (service.discount ?? 0);
 
         await tx.saleService.create({
           data: {
@@ -155,7 +163,11 @@ const getSingleSale = async (id: string, accountId: string) => {
   return sale;
 };
 
-const updateSale = async (id: string, accountId: string, data: UpdateSaleInput): Promise<Sale> => {
+const updateSale = async (
+  id: string,
+  accountId: string,
+  data: UpdateSaleInput,
+): Promise<Sale> => {
   const existing = await prisma.sale.findFirst({
     where: { id, accountId, isDeleted: false },
   });
