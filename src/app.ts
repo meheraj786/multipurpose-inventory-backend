@@ -20,6 +20,8 @@ import { PricingPlanRoutes } from "./modules/pricingPlan/pricingPlan.routes.js";
 import { ServiceRoutes } from "./modules/service/service.routes.js";
 import { authenticate } from "./shared/middlewares/authenticate.js";
 import { checkPermission } from "./shared/middlewares/checkPermission.js";
+import { ProductRoutes } from "./modules/product/product.routes.js";
+import { UnitRoutes } from "./modules/unit/unit.routes.js";
 
 const app: Express = express();
 
@@ -73,6 +75,8 @@ app.use("/api/v1/activity-logs", authenticate, checkPermission("ACTIVITY_LOG"), 
 app.use("/api/v1/staff", authenticate, checkPermission("STAFF"), StaffRoutes);
 app.use("/api/v1/pricing-plans", PricingPlanRoutes);
 app.use("/api/v1/services", authenticate, checkPermission("SERVICE"), ServiceRoutes);
+app.use("/api/v1/products", authenticate, checkPermission("PRODUCT"), ProductRoutes);
+app.use("/api/v1/units", UnitRoutes);
 
 // ==================== ERROR HANDLING ====================
 app.use(notFoundHandler);

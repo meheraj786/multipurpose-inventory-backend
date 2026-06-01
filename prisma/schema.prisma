@@ -11,18 +11,18 @@ datasource db {
 // ==================== AUTH & ACCOUNT ====================
 
 model User {
-  id          String       @id @default(uuid())
-  accountId   String
-  account     Account      @relation(fields: [accountId], references: [id])
+  id           String        @id @default(uuid())
+  accountId    String
+  account      Account       @relation(fields: [accountId], references: [id])
   activityLogs ActivityLog[]
-  email       String       @unique
-  name        String?
-  password    String
-  role        UserRole     @default(STAFF)
-  isDeleted   Boolean      @default(false)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  permissions Permission[]
+  email        String        @unique
+  name         String?
+  password     String
+  role         UserRole      @default(STAFF)
+  isDeleted    Boolean       @default(false)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  permissions  Permission[]
 
   @@index([accountId])
   @@index([email])
@@ -48,7 +48,6 @@ model Account {
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
-  // Relations
   users                 User[]
   permissions           Permission[]
   categories            Category[]
@@ -81,7 +80,7 @@ model Permission {
   id        String         @id @default(uuid())
   userId    String
   user      User           @relation(fields: [userId], references: [id])
-  name        String?
+  name      String?
   accountId String
   account   Account        @relation(fields: [accountId], references: [id])
   module    SystemModule
@@ -126,6 +125,44 @@ model SubscriptionHistory {
 
   @@index([accountId])
   @@index([pricingPlanId])
+}
+
+// ==================== UNIT ====================
+
+model Unit {
+  id               String    @id @default(uuid())
+  name             String
+  symbol           String    @unique
+  group            UnitGroup
+  conversionFactor Decimal
+  isBase           Boolean   @default(false)
+  isActive         Boolean   @default(true)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  products               Product[]
+  rawProducts            RawProduct[]
+  preparedProducts       PreparedProduct[]
+  productStocks          ProductStock[]
+  saleItems              SaleItem[]
+  productUnitConversions ProductUnitConversion[]
+
+  @@index([group])
+  @@index([symbol])
+}
+
+model ProductUnitConversion {
+  id               String   @id @default(uuid())
+  productId        String
+  product          Product  @relation(fields: [productId], references: [id])
+  unitId           String
+  unit             Unit     @relation(fields: [unitId], references: [id])
+  conversionFactor Decimal
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([productId, unitId])
+  @@index([productId])
 }
 
 // ==================== CORE ====================
@@ -202,27 +239,30 @@ model Supplier {
 // ==================== PRODUCT ====================
 
 model Product {
-  id                   String       @id @default(uuid())
-  name                 String
-  img                  String?
-  description          String?
-  sku                  String?
-  tax                  Decimal?
-  defaultPurchasePrice Decimal?
-  defaultSalePrice     Decimal?
-  lowStockAlert        String?
-  categoryId           String
-  category             Category     @relation(fields: [categoryId], references: [id])
-  subCategoryId        String?
-  subCategory          SubCategory? @relation(fields: [subCategoryId], references: [id])
-  saleItems            SaleItem[]
-  accountId            String
-  account              Account      @relation(fields: [accountId], references: [id])
-  isDeleted            Boolean      @default(false)
-  createdAt            DateTime     @default(now())
-  updatedAt            DateTime     @updatedAt
+  id                     String    @id @default(uuid())
+  name                   String
+  img                    String?
+  description            String?
+  sku                    String?
+  tax                    Decimal?
+  defaultPurchasePrice   Decimal?
+  defaultSalePrice       Decimal?
+  lowStockAlert          String?
+  categoryId             String
+  category               Category     @relation(fields: [categoryId], references: [id])
+  subCategoryId          String?
+  subCategory            SubCategory? @relation(fields: [subCategoryId], references: [id])
+  unitId                 String
+  unit                   Unit         @relation(fields: [unitId], references: [id])
+  accountId              String
+  account                Account      @relation(fields: [accountId], references: [id])
+  isDeleted              Boolean      @default(false)
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
 
-  productStocks ProductStock[]
+  productStocks          ProductStock[]
+  saleItems              SaleItem[]
+  productUnitConversions ProductUnitConversion[]
 
   @@index([accountId])
   @@index([categoryId])
@@ -238,7 +278,9 @@ model ProductStock {
   purchase      Purchase? @relation(fields: [purchaseId], references: [id])
   supplierId    String?
   supplier      Supplier? @relation(fields: [supplierId], references: [id])
-  quantity      Int
+  unitId        String
+  unit          Unit      @relation(fields: [unitId], references: [id])
+  quantity      Decimal
   purchasePrice Decimal
   rate          Decimal
   totalCost     Decimal
@@ -260,7 +302,8 @@ model RawProduct {
   id            String       @id @default(uuid())
   name          String
   unitId        String
-  totalStock    String
+  unit          Unit         @relation(fields: [unitId], references: [id])
+  totalStock    Decimal      @default(0)
   img           String?
   description   String?
   lowStockAlert String?
@@ -290,7 +333,7 @@ model RawProductStock {
   purchase      Purchase?  @relation(fields: [purchaseId], references: [id])
   supplierId    String?
   supplier      Supplier?  @relation(fields: [supplierId], references: [id])
-  quantity      Int
+  quantity      Decimal
   totalCost     Decimal?
   lowStockAlert String?
   batch         String?
@@ -318,6 +361,8 @@ model PreparedProduct {
   rawMaterialCost  Decimal?
   expiryDate       DateTime?
   defaultSalePrice Decimal?
+  unitId           String
+  unit             Unit      @relation(fields: [unitId], references: [id])
   isDeleted        Boolean   @default(false)
   accountId        String
   account          Account   @relation(fields: [accountId], references: [id])
@@ -337,7 +382,7 @@ model PreparedProductItem {
   preparedProduct   PreparedProduct @relation(fields: [preparedProductId], references: [id])
   rawProductId      String
   rawProduct        RawProduct      @relation(fields: [rawProductId], references: [id])
-  quantity          Int
+  quantity          Decimal
   unit              String
 
   @@unique([preparedProductId, rawProductId])
@@ -349,7 +394,7 @@ model PreparedProductStock {
   id                String          @id @default(uuid())
   preparedProductId String
   preparedProduct   PreparedProduct @relation(fields: [preparedProductId], references: [id])
-  quantity          Int
+  quantity          Decimal
   isDeleted         Boolean         @default(false)
   accountId         String
   account           Account         @relation(fields: [accountId], references: [id])
@@ -365,7 +410,7 @@ model PreparedProductStock {
 model Purchase {
   id            String    @id @default(uuid())
   productId     String?
-  qty           Int
+  qty           Decimal
   purchasePrice Decimal
   rate          Decimal
   totalCost     Decimal
@@ -436,18 +481,18 @@ model Customer {
 // ==================== SALE ====================
 
 model Sale {
-  id             String      @id @default(uuid())
+  id             String        @id @default(uuid())
   customerId     String?
-  customer       Customer?   @relation(fields: [customerId], references: [id])
+  customer       Customer?     @relation(fields: [customerId], references: [id])
   customerNumber String?
   paymentMethod  PaymentMethod @default(CASH)
-  discount       Decimal?    @default(0)
-  due            Decimal?    @default(0)
-  isDeleted      Boolean     @default(false)
+  discount       Decimal?      @default(0)
+  due            Decimal?      @default(0)
+  isDeleted      Boolean       @default(false)
   accountId      String
-  account        Account     @relation(fields: [accountId], references: [id])
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
+  account        Account       @relation(fields: [accountId], references: [id])
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   saleItems    SaleItem[]
   saleServices SaleService[]
@@ -462,15 +507,15 @@ model SaleItem {
   id            String   @id @default(uuid())
   saleId        String
   sale          Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  
   productId     String?
   product       Product? @relation(fields: [productId], references: [id])
-  
-  quantity      Int
+  unitId        String
+  unit          Unit     @relation(fields: [unitId], references: [id])
+  quantity      Decimal
+  convertedQty  Decimal
   purchasePrice Decimal
   sellPrice     Decimal
   discount      Decimal? @default(0)
-  
   accountId     String
   account       Account  @relation(fields: [accountId], references: [id])
   createdAt     DateTime @default(now())
@@ -505,7 +550,7 @@ model SaleService {
 model Wastage {
   id        String   @id @default(uuid())
   productId String
-  quantity  Int
+  quantity  Decimal
   reason    String
   notes     String?
   isDeleted Boolean  @default(false)
@@ -581,6 +626,14 @@ model Notification {
 }
 
 // ==================== ENUMS ====================
+
+enum UnitGroup {
+  WEIGHT
+  VOLUME
+  LENGTH
+  COUNT
+  AREA
+}
 
 enum UserRole {
   DEVELOPER
