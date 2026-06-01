@@ -16,22 +16,10 @@ router.post(
   PurchaseController.createPurchase,
 );
 
-router.get(
-  "/",
-  checkPermission("PURCHASE"),
-  PurchaseController.getAllPurchases,
-);
+router.get("/", checkPermission("PURCHASE"), PurchaseController.getAllPurchases);
 
-router.get(
-  "/:id",
-  checkPermission("PURCHASE"),
-  PurchaseController.getSinglePurchase,
-);
+router.get("/:id", checkPermission("PURCHASE"), PurchaseController.getSinglePurchase);
 
-router.delete(
-  "/:id",
-  checkPermission("PURCHASE"),
-  PurchaseController.deletePurchase,
-);
+router.delete("/:id", checkPermission("PURCHASE"), PurchaseController.deletePurchase);
 
 export const PurchaseRoutes: Router = router;

@@ -1,25 +1,17 @@
-import {
-  type Prisma,
-  SystemAction,
-  SystemModule,
-} from "../../generated/prisma/index.js";
+import { type Prisma, SystemAction, SystemModule } from "../../generated/prisma/index.js";
 import prisma from "../../shared/utils/prisma.js";
 import { ActivityLogService } from "../activityLog/activityLog.service.js";
 import { TrashService } from "../trash/trash.service.js";
-import type {
-  CreatePurchaseInput,
-  UpdatePurchaseInput,
-} from "./purchase.validation.js";
+import type { CreatePurchaseInput, UpdatePurchaseInput } from "./purchase.validation.js";
 
-const createPurchases = async (
-  data: CreatePurchaseInput,
-  accountId: string,
-  userId: string,
-) => {
+const createPurchases = async (data: CreatePurchaseInput, accountId: string, userId: string) => {
   if (!accountId) throw new Error("accountId is required");
 
   return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-    const created: any[] = [];
+    const created: {
+      purchase: Prisma.Purchase;
+      stock: Prisma.ProductStock;
+    }[] = [];
 
     for (const item of data.items) {
       const product = await tx.product.findUnique({
@@ -79,12 +71,7 @@ const createPurchases = async (
   });
 };
 
-const getAllPurchases = async (
-  accountId: string,
-  page = 1,
-  limit = 10,
-  search?: string,
-) => {
+const getAllPurchases = async (accountId: string, page = 1, limit = 10, search?: string) => {
   const skip = (page - 1) * limit;
 
   const where: Prisma.PurchaseWhereInput = {
@@ -97,7 +84,6 @@ const getAllPurchases = async (
       ],
       include: { supplier: true, productStocks: { include: { product: true } } },
     }),
-    
   };
 
   const [data, total] = await Promise.all([
@@ -152,8 +138,7 @@ const updatePurchase = async (
         purchasePrice: updatedPrice,
         rate: data.rate ?? purchase.rate,
         totalCost,
-        supplierId:
-          data.supplierId === undefined ? purchase.supplierId : data.supplierId,
+        supplierId: data.supplierId === undefined ? purchase.supplierId : data.supplierId,
         notes: data.notes === undefined ? purchase.notes : data.notes,
       },
     });
@@ -166,8 +151,7 @@ const updatePurchase = async (
         purchasePrice: updatedPrice,
         rate: data.rate ?? purchase.rate,
         totalCost,
-        supplierId:
-          data.supplierId === undefined ? purchase.supplierId : data.supplierId,
+        supplierId: data.supplierId === undefined ? purchase.supplierId : data.supplierId,
       },
     });
 
@@ -183,11 +167,7 @@ const updatePurchase = async (
   });
 };
 
-const deletePurchase = async (
-  id: string,
-  accountId: string,
-  userId: string,
-) => {
+const deletePurchase = async (id: string, accountId: string, userId: string) => {
   return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const purchase = await tx.purchase.findFirst({
       where: { id, accountId, isDeleted: false },
@@ -223,5 +203,6 @@ export const PurchaseService = {
   createPurchases,
   getAllPurchases,
   getSinglePurchase,
+  updatePurchase,
   deletePurchase,
 };

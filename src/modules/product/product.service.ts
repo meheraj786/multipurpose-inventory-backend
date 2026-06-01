@@ -7,11 +7,7 @@ import {
 import prisma from "../../shared/utils/prisma.js";
 import { ActivityLogService } from "../activityLog/activityLog.service.js";
 import { TrashService } from "../trash/trash.service.js";
-import type {
-  CreateProductInput,
-  UpdateProductInput,
-  StockInInput,
-} from "./product.validation.js";
+import type { CreateProductInput, UpdateProductInput, StockInInput } from "./product.validation.js";
 
 const createProduct = async (
   data: CreateProductInput,
@@ -29,10 +25,7 @@ const createProduct = async (
   let unitIdToUse = data.unitId;
   if (!unitIdToUse) {
     const defaultUnit = await prisma.unit.findFirst({ where: { accountId } });
-    if (!defaultUnit)
-      throw new Error(
-        "Unit is required. Create a unit first or provide unitId",
-      );
+    if (!defaultUnit) throw new Error("Unit is required. Create a unit first or provide unitId");
     unitIdToUse = defaultUnit.id;
   }
 
@@ -99,10 +92,7 @@ const getAllProducts = async (
 
   const dataWithStock = data.map((product) => ({
     ...product,
-    totalStock: product.productStocks.reduce(
-      (sum, s) => sum + Number(s.quantity),
-      0,
-    ),
+    totalStock: product.productStocks.reduce((sum, s) => sum + Number(s.quantity), 0),
   }));
 
   return {
@@ -148,10 +138,7 @@ const getSingleProduct = async (id: string, accountId: string) => {
 
   if (!product) throw new Error("Product not found");
 
-  const totalStock = product.productStocks.reduce(
-    (sum, s) => sum + Number(s.quantity),
-    0,
-  );
+  const totalStock = product.productStocks.reduce((sum, s) => sum + Number(s.quantity), 0);
 
   return { ...product, totalStock };
 };
@@ -296,8 +283,7 @@ const getStockSummary = async (productId: string, accountId: string) => {
   const totalCost = stocks.reduce((sum, s) => sum + Number(s.totalCost), 0);
   const avgPurchasePrice =
     stocks.length > 0
-      ? stocks.reduce((sum, s) => sum + Number(s.purchasePrice), 0) /
-        stocks.length
+      ? stocks.reduce((sum, s) => sum + Number(s.purchasePrice), 0) / stocks.length
       : 0;
 
   return {

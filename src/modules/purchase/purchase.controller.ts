@@ -4,21 +4,13 @@ import { sendResponse } from "../../shared/utils/response.js";
 import { PurchaseService } from "./purchase.service.js";
 import type { CreatePurchaseInput } from "./purchase.validation.js";
 
-const createPurchase = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const createPurchase = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const accountId = req.user?.accountId as string;
     const userId = req.user?.userId as string;
     const body = req.body as CreatePurchaseInput;
 
-    const result = await PurchaseService.createPurchases(
-      body,
-      accountId,
-      userId,
-    );
+    const result = await PurchaseService.createPurchases(body, accountId, userId);
 
     sendResponse(res, {
       statusCode: httpStatus.CREATED,
@@ -31,23 +23,14 @@ const createPurchase = async (
   }
 };
 
-const getAllPurchases = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const getAllPurchases = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const accountId = req.user?.accountId as string;
     const page = parseInt(req.query.page as string, 10) || 1;
     const limit = parseInt(req.query.limit as string, 10) || 10;
     const search = req.query.search as string | undefined;
 
-    const result = await PurchaseService.getAllPurchases(
-      accountId,
-      page,
-      limit,
-      search,
-    );
+    const result = await PurchaseService.getAllPurchases(accountId, page, limit, search);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -61,11 +44,7 @@ const getAllPurchases = async (
   }
 };
 
-const getSinglePurchase = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const getSinglePurchase = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
     const accountId = req.user?.accountId as string;
@@ -83,11 +62,7 @@ const getSinglePurchase = async (
   }
 };
 
-const deletePurchase = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const deletePurchase = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
     const accountId = req.user?.accountId as string;

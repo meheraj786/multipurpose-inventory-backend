@@ -1,21 +1,10 @@
-import {
-  type Prisma,
-  SystemAction,
-  SystemModule,
-} from "../../generated/prisma/index.js";
+import { type Prisma, SystemAction, SystemModule } from "../../generated/prisma/index.js";
 import prisma from "../../shared/utils/prisma.js";
 import { ActivityLogService } from "../activityLog/activityLog.service.js";
 import { TrashService } from "../trash/trash.service.js";
-import type {
-  CreateSupplierInput,
-  UpdateSupplierInput,
-} from "./supplier.validation.js";
+import type { CreateSupplierInput, UpdateSupplierInput } from "./supplier.validation.js";
 
-const createSupplier = async (
-  data: CreateSupplierInput,
-  accountId: string,
-  userId: string,
-) => {
+const createSupplier = async (data: CreateSupplierInput, accountId: string, userId: string) => {
   const existing = await prisma.supplier.findFirst({
     where: { contact: data.contact, accountId, isDeleted: false },
   });
@@ -116,14 +105,8 @@ const getSingleSupplier = async (id: string, accountId: string) => {
 
   if (!supplier) throw new Error("Supplier not found");
 
-  const totalPurchaseValue = supplier.purchases.reduce(
-    (sum, p) => sum + Number(p.totalCost),
-    0,
-  );
-  const totalDue = supplier.purchases.reduce(
-    (sum, p) => sum + Number(p.due ?? 0),
-    0,
-  );
+  const totalPurchaseValue = supplier.purchases.reduce((sum, p) => sum + Number(p.totalCost), 0);
+  const totalDue = supplier.purchases.reduce((sum, p) => sum + Number(p.due ?? 0), 0);
 
   return { ...supplier, totalPurchaseValue, totalDue };
 };
@@ -170,11 +153,7 @@ const updateSupplier = async (
   return updated;
 };
 
-const deleteSupplier = async (
-  id: string,
-  accountId: string,
-  userId: string,
-) => {
+const deleteSupplier = async (id: string, accountId: string, userId: string) => {
   return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const supplier = await tx.supplier.findFirst({
       where: { id, accountId, isDeleted: false },

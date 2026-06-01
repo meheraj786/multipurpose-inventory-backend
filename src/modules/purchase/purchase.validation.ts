@@ -42,10 +42,6 @@ export const PurchaseValidation = {
   getPurchasesZodSchema,
 };
 
-export type CreatePurchaseInput = z.infer<
-  typeof createPurchaseZodSchema
->["body"];
+export type CreatePurchaseInput = z.infer<typeof createPurchaseZodSchema>["body"];
 
-export type UpdatePurchaseInput = z.infer<
-  typeof updatePurchaseZodSchema
->["body"];
+export type UpdatePurchaseInput = z.infer<typeof updatePurchaseZodSchema>["body"];
