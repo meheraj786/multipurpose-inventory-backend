@@ -3,20 +3,12 @@ import httpStatus from "http-status";
 import { sendResponse } from "../../shared/utils/response.js";
 import { SupplierService } from "./supplier.service.js";
 
-const createSupplier = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const createSupplier = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const accountId = req.user?.accountId as string;
     const userId = req.user?.userId as string;
 
-    const result = await SupplierService.createSupplier(
-      req.body,
-      accountId,
-      userId,
-    );
+    const result = await SupplierService.createSupplier(req.body, accountId, userId);
 
     sendResponse(res, {
       statusCode: httpStatus.CREATED,
@@ -29,21 +21,14 @@ const createSupplier = async (
   }
 };
 
-const getAllSuppliers = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const getAllSuppliers = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const accountId = req.user?.accountId as string;
     const page = parseInt(req.query.page as string, 10) || 1;
     const limit = parseInt(req.query.limit as string, 10) || 10;
     const search = req.query.search as string | undefined;
     const categoryId = req.query.categoryId as string | undefined;
-    const isActive =
-      req.query.isActive !== undefined
-        ? req.query.isActive === "true"
-        : undefined;
+    const isActive = req.query.isActive !== undefined ? req.query.isActive === "true" : undefined;
 
     const result = await SupplierService.getAllSuppliers(
       accountId,
@@ -66,11 +51,7 @@ const getAllSuppliers = async (
   }
 };
 
-const getSingleSupplier = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const getSingleSupplier = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
     const accountId = req.user?.accountId as string;
@@ -88,23 +69,14 @@ const getSingleSupplier = async (
   }
 };
 
-const updateSupplier = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const updateSupplier = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
     const accountId = req.user?.accountId as string;
     const userId = req.user?.userId as string;
     const { accountId: _, ...rest } = req.body;
 
-    const result = await SupplierService.updateSupplier(
-      id,
-      accountId,
-      rest,
-      userId,
-    );
+    const result = await SupplierService.updateSupplier(id, accountId, rest, userId);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -117,11 +89,7 @@ const updateSupplier = async (
   }
 };
 
-const deleteSupplier = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const deleteSupplier = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
     const accountId = req.user?.accountId as string;
@@ -140,11 +108,7 @@ const deleteSupplier = async (
   }
 };
 
-const toggleActive = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const toggleActive = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
     const accountId = req.user?.accountId as string;

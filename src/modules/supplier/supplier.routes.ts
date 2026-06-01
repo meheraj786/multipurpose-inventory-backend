@@ -16,17 +16,9 @@ router.post(
   SupplierController.createSupplier,
 );
 
-router.get(
-  "/",
-  checkPermission("SUPPLIER"),
-  SupplierController.getAllSuppliers,
-);
+router.get("/", checkPermission("SUPPLIER"), SupplierController.getAllSuppliers);
 
-router.get(
-  "/:id",
-  checkPermission("SUPPLIER"),
-  SupplierController.getSingleSupplier,
-);
+router.get("/:id", checkPermission("SUPPLIER"), SupplierController.getSingleSupplier);
 
 router.patch(
   "/:id",
@@ -35,16 +27,8 @@ router.patch(
   SupplierController.updateSupplier,
 );
 
-router.patch(
-  "/:id/toggle-active",
-  checkPermission("SUPPLIER"),
-  SupplierController.toggleActive,
-);
+router.patch("/:id/toggle-active", checkPermission("SUPPLIER"), SupplierController.toggleActive);
 
-router.delete(
-  "/:id",
-  checkPermission("SUPPLIER"),
-  SupplierController.deleteSupplier,
-);
+router.delete("/:id", checkPermission("SUPPLIER"), SupplierController.deleteSupplier);
 
 export const SupplierRoutes: Router = router;
