@@ -40,7 +40,7 @@ const register = async (data: RegisterInput) => {
 const login = async (data: LoginInput) => {
   const user = await prisma.user.findUnique({
     where: { email: data.email, isDeleted: false },
-    include: { account: true },
+    include: { account: true, permissions: true },
   });
 
   if (!user) throw new Error("Invalid email or password");
