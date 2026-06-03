@@ -3,7 +3,7 @@ import { PaymentMethod, FeatureName } from "../../generated/prisma/index.js";
 
 export const createSaleZodSchema = z.object({
   body: z.object({
-    customerId: z.string().optional(),
+    customerId: z.string().optional().transform((val) => (val === "" ? undefined : val)),
     customerNumber: z.string().optional(),
 
     paymentMethod: z.nativeEnum(PaymentMethod).default("CASH"),
