@@ -67,13 +67,12 @@ const getAllCustomers = async (
   };
 };
 
-
 const getSingleCustomer = async (id: string, accountId: string) => {
   return await prisma.customer.findFirst({
-    where: { 
-      id, 
-      accountId, 
-      isDeleted: false 
+    where: {
+      id,
+      accountId,
+      isDeleted: false,
     },
     include: {
       sales: {
@@ -83,8 +82,8 @@ const getSingleCustomer = async (id: string, accountId: string) => {
           saleItems: { include: { product: true } },
           saleServices: { include: { service: true } },
           invoices: true,
-        }
-      }
+        },
+      },
     },
   });
 };
