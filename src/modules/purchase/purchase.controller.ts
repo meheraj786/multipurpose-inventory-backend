@@ -2,7 +2,7 @@ import type { NextFunction, Request, Response } from "express";
 import httpStatus from "http-status";
 import { sendResponse } from "../../shared/utils/response.js";
 import { PurchaseService } from "./purchase.service.js";
-import type { CreatePurchaseInput } from "./purchase.validation.js";
+import type { CreatePurchaseInput, UpdatePurchaseInput } from "./purchase.validation.js";
 
 const createPurchase = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -81,9 +81,30 @@ const deletePurchase = async (req: Request, res: Response, next: NextFunction) =
   }
 };
 
+const updatePurchase = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const id = req.params.id as string;
+    const accountId = req.user?.accountId as string;
+    const userId = req.user?.userId as string;
+    const body = req.body as UpdatePurchaseInput;
+
+    const result = await PurchaseService.updatePurchase(id, accountId, userId, body);
+
+    sendResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: "Purchase updated successfully",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const PurchaseController = {
   createPurchase,
   getAllPurchases,
   getSinglePurchase,
   deletePurchase,
+  updatePurchase,
 };

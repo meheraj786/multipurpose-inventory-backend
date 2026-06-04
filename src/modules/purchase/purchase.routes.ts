@@ -20,6 +20,13 @@ router.get("/", checkPermission("PURCHASE"), PurchaseController.getAllPurchases)
 
 router.get("/:id", checkPermission("PURCHASE"), PurchaseController.getSinglePurchase);
 
+router.patch(
+  "/:id",
+  checkPermission("PURCHASE"),
+  validateRequest(PurchaseValidation.updatePurchaseZodSchema),
+  PurchaseController.updatePurchase,
+);
+
 router.delete("/:id", checkPermission("PURCHASE"), PurchaseController.deletePurchase);
 
 export const PurchaseRoutes: Router = router;
