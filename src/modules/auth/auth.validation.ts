@@ -16,7 +16,7 @@ const registerZodSchema = z.object({
       "RETAIL_AND_RESTAURANT",
       "RETAIL_AND_SERVICE_AND_RESTAURANT",
     ]),
-    currency: z.enum(["USD", "BDT", "EUR", "GBP"]).optional().default("USD"),
+    currency: z.enum(["USD", "BDT", "EUR", "GBP"]).optional().default("BDT"),
     pricingPlanId: z.string().optional(),
   }),
 });
