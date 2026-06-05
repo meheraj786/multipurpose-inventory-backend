@@ -8,16 +8,9 @@ import {
 import prisma from "../../shared/utils/prisma.js";
 import { ActivityLogService } from "../activityLog/activityLog.service.js";
 import { TrashService } from "../trash/trash.service.js";
-import type {
-  CreatePurchaseInput,
-  UpdatePurchaseInput,
-} from "./purchase.validation.js";
+import type { CreatePurchaseInput, UpdatePurchaseInput } from "./purchase.validation.js";
 
-const createPurchases = async (
-  data: CreatePurchaseInput,
-  accountId: string,
-  userId: string,
-) => {
+const createPurchases = async (data: CreatePurchaseInput, accountId: string, userId: string) => {
   if (!accountId) throw new Error("accountId is required");
 
   return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
@@ -84,12 +77,7 @@ const createPurchases = async (
   });
 };
 
-const getAllPurchases = async (
-  accountId: string,
-  page = 1,
-  limit = 10,
-  search?: string,
-) => {
+const getAllPurchases = async (accountId: string, page = 1, limit = 10, search?: string) => {
   const skip = (page - 1) * limit;
 
   const where: Prisma.PurchaseWhereInput = {
@@ -147,8 +135,7 @@ const updatePurchase = async (
     const updatedQty = data.qty ?? Number(purchase.qty);
     const updatedPrice = data.purchasePrice ?? Number(purchase.purchasePrice);
     const totalCost = updatedQty * updatedPrice;
-    let supplierId =
-      data.supplierId === undefined ? purchase.supplierId : data.supplierId;
+    let supplierId = data.supplierId === undefined ? purchase.supplierId : data.supplierId;
     if (supplierId === "") supplierId = null;
 
     const result = await tx.purchase.update({
@@ -171,8 +158,7 @@ const updatePurchase = async (
         purchasePrice: updatedPrice,
         rate: data.rate ?? purchase.rate,
         totalCost,
-        supplierId:
-          data.supplierId === undefined ? purchase.supplierId : data.supplierId,
+        supplierId: supplierId,
       },
     });
 
@@ -188,11 +174,7 @@ const updatePurchase = async (
   });
 };
 
-const deletePurchase = async (
-  id: string,
-  accountId: string,
-  userId: string,
-) => {
+const deletePurchase = async (id: string, accountId: string, userId: string) => {
   return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const purchase = await tx.purchase.findFirst({
       where: { id, accountId, isDeleted: false },
