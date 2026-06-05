@@ -15,10 +15,7 @@ const createSale = async (data: CreateSaleInput, accountId: string, userId: stri
   return await prisma.$transaction(async (tx) => {
     const sale = await tx.sale.create({
       data: {
-        customerId:
-          data.customerId && data.customerId.trim() !== ""
-            ? data.customerId
-            : null,
+        customerId: data.customerId && data.customerId.trim() !== "" ? data.customerId : null,
         customerNumber: data.customerNumber ?? null,
         paymentMethod: data.paymentMethod,
         payments: data.payments ? JSON.parse(JSON.stringify(data.payments)) : null,
@@ -46,9 +43,7 @@ const createSale = async (data: CreateSaleInput, accountId: string, userId: stri
           orderBy: { createdAt: "desc" },
         });
 
-        const purchasePrice = latestStock
-          ? Number(latestStock.purchasePrice)
-          : 0;
+        const purchasePrice = latestStock ? Number(latestStock.purchasePrice) : 0;
 
         const unitId = item.unitId ?? product.unitId;
 
@@ -98,8 +93,7 @@ const createSale = async (data: CreateSaleInput, accountId: string, userId: stri
     // --- Sale Services ---
     if (data.saleServices && data.saleServices.length > 0) {
       for (const service of data.saleServices) {
-        const total =
-          service.unitPrice * service.quantity - (service.discount ?? 0);
+        const total = service.unitPrice * service.quantity - (service.discount ?? 0);
 
         await tx.saleService.create({
           data: {
