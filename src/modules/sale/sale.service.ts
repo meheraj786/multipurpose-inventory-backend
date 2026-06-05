@@ -9,21 +9,26 @@ import { ActivityLogService } from "../activityLog/activityLog.service.js";
 import { TrashService } from "../trash/trash.service.js";
 import type { CreateSaleInput, UpdateSaleInput } from "./sale.validation.js";
 
-const createSale = async (data: CreateSaleInput, accountId: string) => {
+const createSale = async (data: CreateSaleInput, accountId: string, userId: string) => {
   if (!accountId) throw new Error("accountId is required");
 
   return await prisma.$transaction(async (tx) => {
     const sale = await tx.sale.create({
       data: {
-        customerId: data.customerId && data.customerId.trim() !== "" ? data.customerId : null,
+        customerId:
+          data.customerId && data.customerId.trim() !== ""
+            ? data.customerId
+            : null,
         customerNumber: data.customerNumber ?? null,
         paymentMethod: data.paymentMethod,
+        payments: data.payments ? JSON.parse(JSON.stringify(data.payments)) : null,
         discount: data.discount ?? 0,
         due: data.due ?? 0,
         accountId,
       },
     });
 
+    // --- Sale Items (products) ---
     if (data.saleItems && data.saleItems.length > 0) {
       for (const item of data.saleItems) {
         const product = await tx.product.findUnique({
@@ -31,20 +36,37 @@ const createSale = async (data: CreateSaleInput, accountId: string) => {
         });
         if (!product) throw new Error(`Product not found: ${item.productId}`);
 
+        // Fetch purchasePrice from latest ProductStock entry
+        const latestStock = await tx.productStock.findFirst({
+          where: {
+            productId: item.productId,
+            accountId,
+            isDeleted: false,
+          },
+          orderBy: { createdAt: "desc" },
+        });
+
+        const purchasePrice = latestStock
+          ? Number(latestStock.purchasePrice)
+          : 0;
+
+        const unitId = item.unitId ?? product.unitId;
+
         await tx.saleItem.create({
           data: {
             saleId: sale.id,
             productId: item.productId,
-            unitId: product.unitId,
+            unitId,
             quantity: item.quantity,
             convertedQty: item.quantity,
-            purchasePrice: item.purchasePrice,
+            purchasePrice,
             sellPrice: item.sellPrice,
             discount: item.discount ?? 0,
             accountId,
           },
         });
 
+        // Deduct stock FIFO
         let remaining = item.quantity;
 
         const stocks = await tx.productStock.findMany({
@@ -59,7 +81,7 @@ const createSale = async (data: CreateSaleInput, accountId: string) => {
 
         for (const stock of stocks) {
           if (remaining <= 0) break;
-          const deduct = Math.min(remaining, stock.quantity);
+          const deduct = Math.min(remaining, Number(stock.quantity));
           await tx.productStock.update({
             where: { id: stock.id },
             data: { quantity: { decrement: deduct } },
@@ -73,9 +95,11 @@ const createSale = async (data: CreateSaleInput, accountId: string) => {
       }
     }
 
+    // --- Sale Services ---
     if (data.saleServices && data.saleServices.length > 0) {
       for (const service of data.saleServices) {
-        const total = service.unitPrice * service.quantity - (service.discount ?? 0);
+        const total =
+          service.unitPrice * service.quantity - (service.discount ?? 0);
 
         await tx.saleService.create({
           data: {
@@ -90,6 +114,14 @@ const createSale = async (data: CreateSaleInput, accountId: string) => {
         });
       }
     }
+
+    await ActivityLogService.createLog({
+      userId,
+      module: SystemModule.SALE,
+      action: SystemAction.CREATE,
+      details: `Created sale with ${data.saleItems?.length ?? 0} item(s) and ${data.saleServices?.length ?? 0} service(s)`,
+      accountId,
+    });
 
     return await tx.sale.findUnique({
       where: { id: sale.id },
@@ -138,12 +170,7 @@ const getAllSales = async (
 
   return {
     data,
-    meta: {
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-    },
+    meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
   };
 };
 
@@ -162,17 +189,40 @@ const getSingleSale = async (id: string, accountId: string) => {
   return sale;
 };
 
-const updateSale = async (id: string, accountId: string, data: UpdateSaleInput): Promise<Sale> => {
+const updateSale = async (
+  id: string,
+  accountId: string,
+  userId: string,
+  data: UpdateSaleInput,
+): Promise<Sale> => {
   const existing = await prisma.sale.findFirst({
     where: { id, accountId, isDeleted: false },
   });
-
   if (!existing) throw new Error("Sale not found");
 
-  return await prisma.sale.update({
+  const updated = await prisma.sale.update({
     where: { id },
-    data,
+    data: {
+      ...(data.customerId !== undefined && { customerId: data.customerId }),
+      ...(data.customerNumber !== undefined && { customerNumber: data.customerNumber }),
+      ...(data.paymentMethod && { paymentMethod: data.paymentMethod }),
+      ...(data.payments !== undefined && {
+        payments: data.payments ? JSON.parse(JSON.stringify(data.payments)) : null,
+      }),
+      ...(data.discount !== undefined && { discount: data.discount }),
+      ...(data.due !== undefined && { due: data.due }),
+    },
   });
+
+  await ActivityLogService.createLog({
+    userId,
+    module: SystemModule.SALE,
+    action: SystemAction.UPDATE,
+    details: `Updated sale: ${id}`,
+    accountId,
+  });
+
+  return updated;
 };
 
 const deleteSale = async (id: string, accountId: string, userId: string) => {
@@ -180,7 +230,6 @@ const deleteSale = async (id: string, accountId: string, userId: string) => {
     const sale = await tx.sale.findFirst({
       where: { id, accountId, isDeleted: false },
     });
-
     if (!sale) throw new Error("Sale not found");
 
     const result = await tx.sale.update({

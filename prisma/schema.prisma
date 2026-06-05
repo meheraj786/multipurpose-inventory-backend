@@ -480,12 +480,36 @@ model Customer {
 
 // ==================== SALE ====================
 
+// model Sale {
+//   id             String        @id @default(uuid())
+//   customerId     String?
+//   customer       Customer?     @relation(fields: [customerId], references: [id])
+//   customerNumber String?
+//   paymentMethod  PaymentMethod @default(CASH)
+//   discount       Decimal?      @default(0)
+//   due            Decimal?      @default(0)
+//   isDeleted      Boolean       @default(false)
+//   accountId      String
+//   account        Account       @relation(fields: [accountId], references: [id])
+//   createdAt      DateTime      @default(now())
+//   updatedAt      DateTime      @updatedAt
+
+//   saleItems    SaleItem[]
+//   saleServices SaleService[]
+//   invoices     Invoice[]
+
+//   @@index([accountId])
+//   @@index([customerId])
+//   @@index([createdAt])
+// }
+
 model Sale {
   id             String        @id @default(uuid())
   customerId     String?
   customer       Customer?     @relation(fields: [customerId], references: [id])
   customerNumber String?
   paymentMethod  PaymentMethod @default(CASH)
+  payments       Json?        
   discount       Decimal?      @default(0)
   due            Decimal?      @default(0)
   isDeleted      Boolean       @default(false)
@@ -712,6 +736,12 @@ enum PaymentMethod {
   CARD
   MOBILE_BANKING
   CREDIT
+  CASH_AND_CARD
+  CASH_AND_MOBILE_BANKING
+  CASH_AND_CREDIT
+  CARD_AND_MOBILE_BANKING
+  CARD_AND_CREDIT
+  MOBILE_BANKING_AND_CREDIT
 }
 
 enum InvoiceStatus {
