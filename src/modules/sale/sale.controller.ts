@@ -9,7 +9,7 @@ const createSale = async (req: Request, res: Response, next: NextFunction) => {
     const accountId = req.user?.accountId as string;
     // const userId = req.user?.userId as string;
 
-    const sale = await SaleService.createSale(req.body, accountId);
+    const sale = await SaleService.createSale(req.body, accountId, req?.user?.userId as string);
 
     if (!sale) throw new Error("Failed to create sale");
 
@@ -96,7 +96,7 @@ const updateSale = async (req: Request, res: Response, next: NextFunction) => {
     const accountId = req.user?.accountId as string;
     const { accountId: _, ...rest } = req.body;
 
-    const result = await SaleService.updateSale(id, accountId, rest);
+    const result = await SaleService.updateSale(id, accountId, req?.user?.userId as string, rest, );
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
