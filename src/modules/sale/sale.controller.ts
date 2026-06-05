@@ -96,7 +96,7 @@ const updateSale = async (req: Request, res: Response, next: NextFunction) => {
     const accountId = req.user?.accountId as string;
     const { accountId: _, ...rest } = req.body;
 
-    const result = await SaleService.updateSale(id, accountId, req?.user?.userId as string, rest, );
+    const result = await SaleService.updateSale(id, accountId, req?.user?.userId as string, rest);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
