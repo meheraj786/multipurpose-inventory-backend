@@ -1,6 +1,8 @@
 import { type Prisma, SystemAction, type SystemModule } from "../../generated/prisma/index.js";
 import prisma from "../../shared/utils/prisma.js";
 import { ActivityLogService } from "../activityLog/activityLog.service.js";
+import { SaleService } from "../sale/sale.service.js";
+import { PurchaseService } from "../purchase/purchase.service.js";
 
 export type TrashQueryParams = {
   page?: number;
@@ -50,20 +52,63 @@ const getTrashByAccount = async (accountId: string, query: TrashQueryParams = {}
 };
 
 const restoreItem = async (trashId: string, accountId: string, userId: string) => {
-  return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-    const trashItem = await tx.trash.findUnique({ where: { id: trashId } });
-    if (!trashItem || trashItem.accountId !== accountId) {
-      throw new Error("Item not found in trash");
-    }
+  const trashItem = await prisma.trash.findUnique({ where: { id: trashId } });
+  if (!trashItem || trashItem.accountId !== accountId) {
+    throw new Error("Item not found in trash");
+  }
 
+  if (trashItem.moduleName === "SALE") {
+    await prisma.trash.delete({ where: { id: trashId } });
+    try {
+      await SaleService.restoreSale(trashItem.itemId, accountId, userId);
+    } catch (err) {
+      await prisma.trash.create({
+        data: {
+          id: trashId,
+          moduleName: trashItem.moduleName,
+          itemName: trashItem.itemName,
+          itemId: trashItem.itemId,
+          deletedBy: trashItem.deletedBy,
+          accountId: trashItem.accountId,
+          date: trashItem.date,
+        },
+      });
+      throw err;
+    }
+    return { message: "Sale restored successfully with stock adjustment" };
+  }
+
+  if (trashItem.moduleName === "PURCHASE") {
+    await prisma.trash.delete({ where: { id: trashId } });
+    try {
+      await PurchaseService.restorePurchase(trashItem.itemId, accountId, userId);
+    } catch (err) {
+      await prisma.trash.create({
+        data: {
+          id: trashId,
+          moduleName: trashItem.moduleName,
+          itemName: trashItem.itemName,
+          itemId: trashItem.itemId,
+          deletedBy: trashItem.deletedBy,
+          accountId: trashItem.accountId,
+          date: trashItem.date,
+        },
+      });
+      throw err;
+    }
+    return { message: "Purchase restored successfully with stock adjustment" };
+  }
+
+  return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const modelMap: Partial<Record<SystemModule, keyof Prisma.TransactionClient>> = {
       USER: "user",
       ACCOUNT: "account",
       CATEGORY: "category",
       SUBCATEGORY: "subCategory",
+      SUPPLIER: "supplier",
       CUSTOMER: "customer",
-      SALE: "sale",
       INVOICE: "invoice",
+      SERVICE: "service",
       PERMISSION: "permission",
       AUTH: "user",
     };
@@ -77,11 +122,7 @@ const restoreItem = async (trashId: string, accountId: string, userId: string) =
       update: (args: { where: { id: string }; data: { isDeleted: boolean } }) => Promise<unknown>;
     };
 
-    await model.update({
-      where: { id: trashItem.itemId },
-      data: { isDeleted: false },
-    });
-
+    await model.update({ where: { id: trashItem.itemId }, data: { isDeleted: false } });
     await tx.trash.delete({ where: { id: trashId } });
 
     await ActivityLogService.createLog({
@@ -97,9 +138,7 @@ const restoreItem = async (trashId: string, accountId: string, userId: string) =
 };
 
 const permanentDelete = async (trashId: string, accountId: string) => {
-  return await prisma.trash.delete({
-    where: { id: trashId, accountId },
-  });
+  return await prisma.trash.delete({ where: { id: trashId, accountId } });
 };
 
 export const TrashService = {

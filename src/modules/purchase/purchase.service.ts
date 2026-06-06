@@ -14,15 +14,10 @@ const createPurchases = async (data: CreatePurchaseInput, accountId: string, use
   if (!accountId) throw new Error("accountId is required");
 
   return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-    const created: {
-      purchase: Purchase;
-      stock: ProductStock;
-    }[] = [];
+    const created: { purchase: Purchase; stock: ProductStock }[] = [];
 
     for (const item of data.items) {
-      const product = await tx.product.findUnique({
-        where: { id: item.productId },
-      });
+      const product = await tx.product.findUnique({ where: { id: item.productId } });
       if (!product) throw new Error(`Product not found: ${item.productId}`);
 
       const unitId = item.unitId ?? product.unitId;
@@ -56,7 +51,6 @@ const createPurchases = async (data: CreatePurchaseInput, accountId: string, use
         },
       });
 
-      // Optionally update product default purchase price
       await tx.product.update({
         where: { id: product.id },
         data: { defaultPurchasePrice: item.purchasePrice },
@@ -145,12 +139,11 @@ const updatePurchase = async (
         purchasePrice: updatedPrice,
         rate: data.rate ?? purchase.rate,
         totalCost,
-        supplierId: supplierId,
+        supplierId,
         notes: data.notes === undefined ? purchase.notes : data.notes,
       },
     });
 
-    // Also update associated product stock if it exists
     await tx.productStock.updateMany({
       where: { purchaseId: id, accountId },
       data: {
@@ -158,7 +151,7 @@ const updatePurchase = async (
         purchasePrice: updatedPrice,
         rate: data.rate ?? purchase.rate,
         totalCost,
-        supplierId: supplierId,
+        supplierId,
       },
     });
 
@@ -178,9 +171,36 @@ const deletePurchase = async (id: string, accountId: string, userId: string) => 
   return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const purchase = await tx.purchase.findFirst({
       where: { id, accountId, isDeleted: false },
+      include: { productStocks: true },
     });
     if (!purchase) throw new Error("Purchase not found");
 
+    // Guard: prevent deletion if any stock from this purchase has already
+    // been (partially) sold — sold stock quantity will be less than original
+    for (const stock of purchase.productStocks) {
+      if (stock.isDeleted) continue;
+      const original = Number(purchase.qty);
+      const current = Number(stock.quantity);
+      if (current < original) {
+        const product = await tx.product.findUnique({
+          where: { id: stock.productId },
+          select: { name: true },
+        });
+        throw new Error(
+          `Cannot delete purchase — stock for "${product?.name ?? stock.productId}" ` +
+            `has already been partially sold (${original - current} unit(s) sold). ` +
+            `Delete or void the related sales first.`,
+        );
+      }
+    }
+
+    // Soft-delete all ProductStock entries linked to this purchase
+    await tx.productStock.updateMany({
+      where: { purchaseId: id, accountId },
+      data: { isDeleted: true },
+    });
+
+    // Soft-delete the purchase itself
     const result = await tx.purchase.update({
       where: { id },
       data: { isDeleted: true },
@@ -198,7 +218,39 @@ const deletePurchase = async (id: string, accountId: string, userId: string) => 
       userId,
       module: SystemModule.PURCHASE,
       action: SystemAction.DELETE,
-      details: `Deleted purchase: ${purchase.id}`,
+      details: `Deleted purchase ${purchase.id} — removed ${purchase.productStocks.length} stock entry(ies)`,
+      accountId,
+    });
+
+    return result;
+  });
+};
+
+const restorePurchase = async (id: string, accountId: string, userId: string) => {
+  return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const purchase = await tx.purchase.findFirst({
+      where: { id, accountId, isDeleted: true },
+      include: { productStocks: true },
+    });
+    if (!purchase) throw new Error("Purchase not found in trash");
+
+    // Restore all linked stock entries
+    await tx.productStock.updateMany({
+      where: { purchaseId: id, accountId },
+      data: { isDeleted: false },
+    });
+
+    // Restore the purchase
+    const result = await tx.purchase.update({
+      where: { id },
+      data: { isDeleted: false },
+    });
+
+    await ActivityLogService.createLog({
+      userId,
+      module: SystemModule.PURCHASE,
+      action: SystemAction.RESTORE,
+      details: `Restored purchase ${id} — re-enabled ${purchase.productStocks.length} stock entry(ies)`,
       accountId,
     });
 
@@ -212,4 +264,5 @@ export const PurchaseService = {
   getSinglePurchase,
   updatePurchase,
   deletePurchase,
+  restorePurchase,
 };

@@ -200,7 +200,6 @@ const updateSale = async (
 
 const payDue = async (saleId: string, accountId: string, userId: string, data: PayDueInput) => {
   return await prisma.$transaction(async (tx) => {
-    // Fetch the sale with its customer info for the invoice
     const sale = await tx.sale.findFirst({
       where: { id: saleId, accountId, isDeleted: false },
       include: { customer: true },
@@ -218,13 +217,11 @@ const payDue = async (saleId: string, accountId: string, userId: string, data: P
     const newDue = Number((currentDue - data.amountPaid).toFixed(2));
     const isDueCleared = newDue === 0;
 
-    // Update the sale's due amount
     const updatedSale = await tx.sale.update({
       where: { id: saleId },
       data: { due: newDue },
     });
 
-    // Create a due-payment invoice
     const billTo = sale.customer?.name ?? sale.customerNumber ?? "Walk-in Customer";
 
     const invoice = await tx.invoice.create({
@@ -258,10 +255,44 @@ const payDue = async (saleId: string, accountId: string, userId: string, data: P
 
 const deleteSale = async (id: string, accountId: string, userId: string) => {
   return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-    const sale = await tx.sale.findFirst({ where: { id, accountId, isDeleted: false } });
+    const sale = await tx.sale.findFirst({
+      where: { id, accountId, isDeleted: false },
+      include: { saleItems: true },
+    });
     if (!sale) throw new Error("Sale not found");
 
-    const result = await tx.sale.update({ where: { id }, data: { isDeleted: true } });
+    for (const item of sale.saleItems) {
+      if (!item.productId) continue;
+
+      const latestStock = await tx.productStock.findFirst({
+        where: { productId: item.productId, accountId, isDeleted: false },
+        orderBy: { createdAt: "desc" },
+      });
+
+      if (latestStock) {
+        await tx.productStock.update({
+          where: { id: latestStock.id },
+          data: { quantity: { increment: Number(item.quantity) } },
+        });
+      } else {
+        await tx.productStock.create({
+          data: {
+            productId: item.productId,
+            quantity: Number(item.quantity),
+            purchasePrice: Number(item.purchasePrice),
+            rate: Number(item.purchasePrice),
+            totalCost: 0,
+            unitId: item.unitId,
+            accountId,
+          },
+        });
+      }
+    }
+
+    const result = await tx.sale.update({
+      where: { id },
+      data: { isDeleted: true },
+    });
 
     await TrashService.addToTrash({
       moduleName: SystemModule.SALE,
@@ -275,7 +306,84 @@ const deleteSale = async (id: string, accountId: string, userId: string) => {
       userId,
       module: SystemModule.SALE,
       action: SystemAction.DELETE,
-      details: `Deleted sale: ${sale.id}`,
+      details: `Deleted sale ${sale.id} — restored stock for ${sale.saleItems.length} item(s)`,
+      accountId,
+    });
+
+    return result;
+  });
+};
+
+const restoreSale = async (id: string, accountId: string, userId: string) => {
+  return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const sale = await tx.sale.findFirst({
+      where: { id, accountId, isDeleted: true },
+      include: { saleItems: true },
+    });
+    if (!sale) throw new Error("Sale not found in trash");
+
+    for (const item of sale.saleItems) {
+      if (!item.productId) continue;
+
+      const stocks = await tx.productStock.findMany({
+        where: {
+          productId: item.productId,
+          accountId,
+          isDeleted: false,
+          quantity: { gt: 0 },
+        },
+        orderBy: { createdAt: "asc" },
+      });
+
+      const totalAvailable = stocks.reduce((sum, s) => sum + Number(s.quantity), 0);
+
+      if (totalAvailable < Number(item.quantity)) {
+        const product = await tx.product.findUnique({
+          where: { id: item.productId },
+          select: { name: true },
+        });
+        throw new Error(
+          `Insufficient stock to restore sale. Product "${product?.name ?? item.productId}" needs ${item.quantity} but only ${totalAvailable} available.`,
+        );
+      }
+    }
+
+    for (const item of sale.saleItems) {
+      if (!item.productId) continue;
+
+      let remaining = Number(item.quantity);
+
+      const stocks = await tx.productStock.findMany({
+        where: {
+          productId: item.productId,
+          accountId,
+          isDeleted: false,
+          quantity: { gt: 0 },
+        },
+        orderBy: { createdAt: "asc" },
+      });
+
+      for (const stock of stocks) {
+        if (remaining <= 0) break;
+        const deduct = Math.min(remaining, Number(stock.quantity));
+        await tx.productStock.update({
+          where: { id: stock.id },
+          data: { quantity: { decrement: deduct } },
+        });
+        remaining -= deduct;
+      }
+    }
+
+    const result = await tx.sale.update({
+      where: { id },
+      data: { isDeleted: false },
+    });
+
+    await ActivityLogService.createLog({
+      userId,
+      module: SystemModule.SALE,
+      action: SystemAction.RESTORE,
+      details: `Restored sale ${id} — deducted stock for ${sale.saleItems.length} item(s)`,
       accountId,
     });
 
@@ -290,4 +398,5 @@ export const SaleService = {
   updateSale,
   payDue,
   deleteSale,
+  restoreSale,
 };
