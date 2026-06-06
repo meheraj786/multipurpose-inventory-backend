@@ -8,6 +8,7 @@ import prisma from "../../shared/utils/prisma.js";
 import { ActivityLogService } from "../activityLog/activityLog.service.js";
 import { TrashService } from "../trash/trash.service.js";
 import type { CreateSaleInput, UpdateSaleInput } from "./sale.validation.js";
+import type { PayDueInput } from "../invoice/invoice.validation.js";
 
 const createSale = async (data: CreateSaleInput, accountId: string, userId: string) => {
   if (!accountId) throw new Error("accountId is required");
@@ -25,26 +26,17 @@ const createSale = async (data: CreateSaleInput, accountId: string, userId: stri
       },
     });
 
-    // --- Sale Items (products) ---
     if (data.saleItems && data.saleItems.length > 0) {
       for (const item of data.saleItems) {
-        const product = await tx.product.findUnique({
-          where: { id: item.productId },
-        });
+        const product = await tx.product.findUnique({ where: { id: item.productId } });
         if (!product) throw new Error(`Product not found: ${item.productId}`);
 
-        // Fetch purchasePrice from latest ProductStock entry
         const latestStock = await tx.productStock.findFirst({
-          where: {
-            productId: item.productId,
-            accountId,
-            isDeleted: false,
-          },
+          where: { productId: item.productId, accountId, isDeleted: false },
           orderBy: { createdAt: "desc" },
         });
 
         const purchasePrice = latestStock ? Number(latestStock.purchasePrice) : 0;
-
         const unitId = item.unitId ?? product.unitId;
 
         await tx.saleItem.create({
@@ -61,16 +53,9 @@ const createSale = async (data: CreateSaleInput, accountId: string, userId: stri
           },
         });
 
-        // Deduct stock FIFO
         let remaining = item.quantity;
-
         const stocks = await tx.productStock.findMany({
-          where: {
-            productId: item.productId,
-            accountId,
-            isDeleted: false,
-            quantity: { gt: 0 },
-          },
+          where: { productId: item.productId, accountId, isDeleted: false, quantity: { gt: 0 } },
           orderBy: { createdAt: "asc" },
         });
 
@@ -84,17 +69,13 @@ const createSale = async (data: CreateSaleInput, accountId: string, userId: stri
           remaining -= deduct;
         }
 
-        if (remaining > 0) {
-          throw new Error(`Insufficient stock for product: ${item.productId}`);
-        }
+        if (remaining > 0) throw new Error(`Insufficient stock for product: ${item.productId}`);
       }
     }
 
-    // --- Sale Services ---
     if (data.saleServices && data.saleServices.length > 0) {
       for (const service of data.saleServices) {
         const total = service.unitPrice * service.quantity - (service.discount ?? 0);
-
         await tx.saleService.create({
           data: {
             saleId: sale.id,
@@ -189,9 +170,7 @@ const updateSale = async (
   userId: string,
   data: UpdateSaleInput,
 ): Promise<Sale> => {
-  const existing = await prisma.sale.findFirst({
-    where: { id, accountId, isDeleted: false },
-  });
+  const existing = await prisma.sale.findFirst({ where: { id, accountId, isDeleted: false } });
   if (!existing) throw new Error("Sale not found");
 
   const updated = await prisma.sale.update({
@@ -219,17 +198,77 @@ const updateSale = async (
   return updated;
 };
 
-const deleteSale = async (id: string, accountId: string, userId: string) => {
-  return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+const payDue = async (
+  saleId: string,
+  accountId: string,
+  userId: string,
+  data: PayDueInput,
+) => {
+  return await prisma.$transaction(async (tx) => {
+    // Fetch the sale with its customer info for the invoice
     const sale = await tx.sale.findFirst({
-      where: { id, accountId, isDeleted: false },
+      where: { id: saleId, accountId, isDeleted: false },
+      include: { customer: true },
     });
+
     if (!sale) throw new Error("Sale not found");
 
-    const result = await tx.sale.update({
-      where: { id },
-      data: { isDeleted: true },
+    const currentDue = Number(sale.due ?? 0);
+    if (currentDue <= 0) throw new Error("This sale has no outstanding due");
+
+    if (data.amountPaid > currentDue) {
+      throw new Error(
+        `Amount paid (${data.amountPaid}) exceeds outstanding due (${currentDue})`,
+      );
+    }
+
+    const newDue = Number((currentDue - data.amountPaid).toFixed(2));
+    const isDueCleared = newDue === 0;
+
+    // Update the sale's due amount
+    const updatedSale = await tx.sale.update({
+      where: { id: saleId },
+      data: { due: newDue },
     });
+
+    // Create a due-payment invoice
+    const billTo = sale.customer?.name ?? sale.customerNumber ?? "Walk-in Customer";
+
+    const invoice = await tx.invoice.create({
+      data: {
+        billTo,
+        invoiceDate: new Date(),
+        saleId,
+        status: isDueCleared ? "PAID" : "PARTIALLY_PAID",
+        grandTotal: data.amountPaid,
+        accountId,
+      },
+    });
+
+    await ActivityLogService.createLog({
+      userId,
+      module: SystemModule.SALE,
+      action: SystemAction.UPDATE,
+      details: `Due payment of ${data.amountPaid} received for sale ${saleId}. Remaining due: ${newDue}`,
+      accountId,
+    });
+
+    return {
+      sale: updatedSale,
+      invoice,
+      amountPaid: data.amountPaid,
+      remainingDue: newDue,
+      isDueCleared,
+    };
+  });
+};
+
+const deleteSale = async (id: string, accountId: string, userId: string) => {
+  return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const sale = await tx.sale.findFirst({ where: { id, accountId, isDeleted: false } });
+    if (!sale) throw new Error("Sale not found");
+
+    const result = await tx.sale.update({ where: { id }, data: { isDeleted: true } });
 
     await TrashService.addToTrash({
       moduleName: SystemModule.SALE,
@@ -256,5 +295,6 @@ export const SaleService = {
   getAllSales,
   getSingleSale,
   updateSale,
+  payDue,
   deleteSale,
 };

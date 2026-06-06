@@ -22,10 +22,21 @@ const updateInvoiceZodSchema = z.object({
   }),
 });
 
+const payDueZodSchema = z.object({
+  body: z.object({
+    amountPaid: z.number().positive("Amount paid must be greater than 0"),
+    paymentMethod: z.string().min(1, "Payment method is required"),
+    transactionId: z.string().optional(),
+    notes: z.string().optional(),
+  }),
+});
+
 export type CreateInvoiceInput = z.infer<typeof createInvoiceZodSchema>["body"];
 export type UpdateInvoiceInput = z.infer<typeof updateInvoiceZodSchema>["body"];
+export type PayDueInput = z.infer<typeof payDueZodSchema>["body"];
 
 export const InvoiceValidation = {
   createInvoiceZodSchema,
   updateInvoiceZodSchema,
+  payDueZodSchema,
 };

@@ -11,7 +11,12 @@ export type ActivityLogQueryParams = {
   userId?: string;
 };
 
-const createLog = async (data: ILogPayload): Promise<ActivityLog> => {
+const createLog = async (data: ILogPayload): Promise<ActivityLog | null> => {
+  if (!data.userId) {
+    console.warn(`[ActivityLog] Skipped: userId is undefined for action ${data.action} on ${data.module}`);
+    return null;
+  }
+
   return await prisma.activityLog.create({
     data: {
       userId: data.userId,
@@ -42,9 +47,7 @@ const getLogsByAccount = async (accountId: string, query: ActivityLogQueryParams
       orderBy: { dateTime: "desc" },
       skip: (page - 1) * pageSize,
       take: pageSize,
-      include: {
-        user: true,
-      },
+      include: { user: true },
     }),
     prisma.activityLog.count({ where }),
   ]);
