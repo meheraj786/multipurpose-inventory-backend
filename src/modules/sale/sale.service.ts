@@ -198,12 +198,7 @@ const updateSale = async (
   return updated;
 };
 
-const payDue = async (
-  saleId: string,
-  accountId: string,
-  userId: string,
-  data: PayDueInput,
-) => {
+const payDue = async (saleId: string, accountId: string, userId: string, data: PayDueInput) => {
   return await prisma.$transaction(async (tx) => {
     // Fetch the sale with its customer info for the invoice
     const sale = await tx.sale.findFirst({
@@ -217,9 +212,7 @@ const payDue = async (
     if (currentDue <= 0) throw new Error("This sale has no outstanding due");
 
     if (data.amountPaid > currentDue) {
-      throw new Error(
-        `Amount paid (${data.amountPaid}) exceeds outstanding due (${currentDue})`,
-      );
+      throw new Error(`Amount paid (${data.amountPaid}) exceeds outstanding due (${currentDue})`);
     }
 
     const newDue = Number((currentDue - data.amountPaid).toFixed(2));

@@ -13,7 +13,9 @@ export type ActivityLogQueryParams = {
 
 const createLog = async (data: ILogPayload): Promise<ActivityLog | null> => {
   if (!data.userId) {
-    console.warn(`[ActivityLog] Skipped: userId is undefined for action ${data.action} on ${data.module}`);
+    console.warn(
+      `[ActivityLog] Skipped: userId is undefined for action ${data.action} on ${data.module}`,
+    );
     return null;
   }
 

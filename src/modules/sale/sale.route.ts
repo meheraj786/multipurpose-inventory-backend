@@ -9,8 +9,16 @@ const router = Router();
 router.post("/", validateRequest(SaleValidation.createSaleZodSchema), SaleController.createSale);
 router.get("/", SaleController.getAllSales);
 router.get("/:id", SaleController.getSingleSale);
-router.patch("/:id", validateRequest(SaleValidation.updateSaleZodSchema), SaleController.updateSale);
-router.post("/:id/pay-due", validateRequest(InvoiceValidation.payDueZodSchema), SaleController.payDue);
+router.patch(
+  "/:id",
+  validateRequest(SaleValidation.updateSaleZodSchema),
+  SaleController.updateSale,
+);
+router.post(
+  "/:id/pay-due",
+  validateRequest(InvoiceValidation.payDueZodSchema),
+  SaleController.payDue,
+);
 router.delete("/:id", SaleController.deleteSale);
 
 export const SaleRoutes: Router = router;
