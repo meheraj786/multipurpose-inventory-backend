@@ -17,9 +17,7 @@ const createPreparedProductZodSchema = z.object({
     expiryDate: z.string().datetime().optional(),
     description: z.string().optional(),
     img: z.string().optional(),
-    items: z
-      .array(preparedProductItemSchema)
-      .min(1, "Recipe must have at least one ingredient"),
+    items: z.array(preparedProductItemSchema).min(1, "Recipe must have at least one ingredient"),
   }),
 });
 

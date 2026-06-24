@@ -1,8 +1,4 @@
-import {
-  type Prisma,
-  SystemAction,
-  SystemModule,
-} from "../../generated/prisma/index.js";
+import { type Prisma, SystemAction, SystemModule } from "../../generated/prisma/index.js";
 import prisma from "../../shared/utils/prisma.js";
 import { ActivityLogService } from "../activityLog/activityLog.service.js";
 import { TrashService } from "../trash/trash.service.js";
@@ -29,32 +25,30 @@ const createPreparedProduct = async (
     throw new Error("One or more raw products not found");
   }
 
-  const preparedProduct = await prisma.$transaction(
-    async (tx: Prisma.TransactionClient) => {
-      return await tx.preparedProduct.create({
-        data: {
-          ...productData,
-          accountId,
-          ...(productData.expiryDate && {
-            expiryDate: new Date(productData.expiryDate),
-          }),
-          preparedProductItems: {
-            create: items.map((item) => ({
-              rawProductId: item.rawProductId,
-              quantity: item.quantity,
-              unit: item.unit,
-            })),
-          },
+  const preparedProduct = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    return await tx.preparedProduct.create({
+      data: {
+        ...productData,
+        accountId,
+        ...(productData.expiryDate && {
+          expiryDate: new Date(productData.expiryDate),
+        }),
+        preparedProductItems: {
+          create: items.map((item) => ({
+            rawProductId: item.rawProductId,
+            quantity: item.quantity,
+            unit: item.unit,
+          })),
         },
-        include: {
-          unit: true,
-          preparedProductItems: {
-            include: { rawProduct: { include: { unit: true } } },
-          },
+      },
+      include: {
+        unit: true,
+        preparedProductItems: {
+          include: { rawProduct: { include: { unit: true } } },
         },
-      });
-    },
-  );
+      },
+    });
+  });
 
   await ActivityLogService.createLog({
     userId,
@@ -110,10 +104,7 @@ const getAllPreparedProducts = async (
 
   const dataWithStock = data.map((pp) => ({
     ...pp,
-    totalStock: pp.preparedProductStocks.reduce(
-      (sum, s) => sum + Number(s.quantity),
-      0,
-    ),
+    totalStock: pp.preparedProductStocks.reduce((sum, s) => sum + Number(s.quantity), 0),
   }));
 
   return {
@@ -160,46 +151,44 @@ const updatePreparedProduct = async (
 
   const { items, expiryDate, ...productData } = data;
 
-  const updated = await prisma.$transaction(
-    async (tx: Prisma.TransactionClient) => {
-      if (items && items.length > 0) {
-        const rawProductIds = items.map((i) => i.rawProductId);
-        const rawProducts = await tx.rawProduct.findMany({
-          where: { id: { in: rawProductIds }, accountId, isDeleted: false },
-        });
-        if (rawProducts.length !== rawProductIds.length) {
-          throw new Error("One or more raw products not found");
-        }
-
-        await tx.preparedProductItem.deleteMany({
-          where: { preparedProductId: id },
-        });
-
-        await tx.preparedProductItem.createMany({
-          data: items.map((item) => ({
-            preparedProductId: id,
-            rawProductId: item.rawProductId,
-            quantity: item.quantity,
-            unit: item.unit,
-          })),
-        });
+  const updated = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    if (items && items.length > 0) {
+      const rawProductIds = items.map((i) => i.rawProductId);
+      const rawProducts = await tx.rawProduct.findMany({
+        where: { id: { in: rawProductIds }, accountId, isDeleted: false },
+      });
+      if (rawProducts.length !== rawProductIds.length) {
+        throw new Error("One or more raw products not found");
       }
 
-      return await tx.preparedProduct.update({
-        where: { id },
-        data: {
-          ...productData,
-          ...(expiryDate && { expiryDate: new Date(expiryDate) }),
-        },
-        include: {
-          unit: true,
-          preparedProductItems: {
-            include: { rawProduct: { include: { unit: true } } },
-          },
-        },
+      await tx.preparedProductItem.deleteMany({
+        where: { preparedProductId: id },
       });
-    },
-  );
+
+      await tx.preparedProductItem.createMany({
+        data: items.map((item) => ({
+          preparedProductId: id,
+          rawProductId: item.rawProductId,
+          quantity: item.quantity,
+          unit: item.unit,
+        })),
+      });
+    }
+
+    return await tx.preparedProduct.update({
+      where: { id },
+      data: {
+        ...productData,
+        ...(expiryDate && { expiryDate: new Date(expiryDate) }),
+      },
+      include: {
+        unit: true,
+        preparedProductItems: {
+          include: { rawProduct: { include: { unit: true } } },
+        },
+      },
+    });
+  });
 
   await ActivityLogService.createLog({
     userId,
@@ -212,11 +201,7 @@ const updatePreparedProduct = async (
   return updated;
 };
 
-const deletePreparedProduct = async (
-  id: string,
-  accountId: string,
-  userId: string,
-) => {
+const deletePreparedProduct = async (id: string, accountId: string, userId: string) => {
   return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const preparedProduct = await tx.preparedProduct.findFirst({
       where: { id, accountId, isDeleted: false },
@@ -227,9 +212,7 @@ const deletePreparedProduct = async (
       where: { preparedProductId: id, isDeleted: false, quantity: { gt: 0 } },
     });
     if (activeStock > 0) {
-      throw new Error(
-        "Cannot delete prepared product with active stock. Clear stock first.",
-      );
+      throw new Error("Cannot delete prepared product with active stock. Clear stock first.");
     }
 
     await tx.preparedProductItem.deleteMany({
@@ -261,12 +244,7 @@ const deletePreparedProduct = async (
   });
 };
 
-const produceStock = async (
-  id: string,
-  accountId: string,
-  userId: string,
-  quantity: number,
-) => {
+const produceStock = async (id: string, accountId: string, userId: string, quantity: number) => {
   return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const preparedProduct = await tx.preparedProduct.findFirst({
       where: { id, accountId, isDeleted: false },

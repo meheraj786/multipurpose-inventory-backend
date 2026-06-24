@@ -3,19 +3,11 @@ import httpStatus from "http-status";
 import { sendResponse } from "../../shared/utils/response.js";
 import { PreparedProductService } from "./preparedProduct.service.js";
 
-const createPreparedProduct = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const createPreparedProduct = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const accountId = req.user?.accountId as string;
     const userId = req.user?.userId as string;
-    const result = await PreparedProductService.createPreparedProduct(
-      req.body,
-      accountId,
-      userId,
-    );
+    const result = await PreparedProductService.createPreparedProduct(req.body, accountId, userId);
     sendResponse(res, {
       statusCode: httpStatus.CREATED,
       success: true,
@@ -27,11 +19,7 @@ const createPreparedProduct = async (
   }
 };
 
-const getAllPreparedProducts = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const getAllPreparedProducts = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const accountId = req.user?.accountId as string;
     const page = parseInt(req.query.page as string, 10) || 1;
@@ -58,18 +46,11 @@ const getAllPreparedProducts = async (
   }
 };
 
-const getSinglePreparedProduct = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const getSinglePreparedProduct = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
     const accountId = req.user?.accountId as string;
-    const result = await PreparedProductService.getSinglePreparedProduct(
-      id,
-      accountId,
-    );
+    const result = await PreparedProductService.getSinglePreparedProduct(id, accountId);
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,
@@ -81,22 +62,13 @@ const getSinglePreparedProduct = async (
   }
 };
 
-const updatePreparedProduct = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const updatePreparedProduct = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
     const accountId = req.user?.accountId as string;
     const userId = req.user?.userId as string;
     const { accountId: _, ...rest } = req.body;
-    const result = await PreparedProductService.updatePreparedProduct(
-      id,
-      accountId,
-      rest,
-      userId,
-    );
+    const result = await PreparedProductService.updatePreparedProduct(id, accountId, rest, userId);
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,
@@ -108,20 +80,12 @@ const updatePreparedProduct = async (
   }
 };
 
-const deletePreparedProduct = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const deletePreparedProduct = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
     const accountId = req.user?.accountId as string;
     const userId = req.user?.userId as string;
-    const result = await PreparedProductService.deletePreparedProduct(
-      id,
-      accountId,
-      userId,
-    );
+    const result = await PreparedProductService.deletePreparedProduct(id, accountId, userId);
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,
@@ -133,11 +97,7 @@ const deletePreparedProduct = async (
   }
 };
 
-const produceStock = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const produceStock = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
     const accountId = req.user?.accountId as string;
@@ -148,12 +108,7 @@ const produceStock = async (
       throw new Error("Quantity must be a positive number");
     }
 
-    const result = await PreparedProductService.produceStock(
-      id,
-      accountId,
-      userId,
-      quantity,
-    );
+    const result = await PreparedProductService.produceStock(id, accountId, userId, quantity);
     sendResponse(res, {
       statusCode: httpStatus.CREATED,
       success: true,
