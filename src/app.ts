@@ -24,6 +24,8 @@ import { ProductRoutes } from "./modules/product/product.routes.js";
 import { UnitRoutes } from "./modules/unit/unit.routes.js";
 import { SupplierRoutes } from "./modules/supplier/supplier.routes.js";
 import { PurchaseRoutes } from "./modules/purchase/purchase.routes.js";
+import { RawProductRoutes } from "./modules/rawProduct/rawProduct.route.js";
+import { PreparedProductRoutes } from "./modules/preparedProduct/preparedProduct.routes.js";
 
 const app: Express = express();
 
@@ -81,6 +83,8 @@ app.use("/api/v1/products", authenticate, checkPermission("PRODUCT"), ProductRou
 app.use("/api/v1/units", UnitRoutes);
 app.use("/api/v1/suppliers", authenticate, checkPermission("SUPPLIER"), SupplierRoutes);
 app.use("/api/v1/purchases", authenticate, checkPermission("PURCHASE"), PurchaseRoutes);
+app.use("/api/v1/raw-products", authenticate, checkPermission("RAW_PRODUCT"), RawProductRoutes);
+app.use("/api/v1/prepared-products", authenticate, checkPermission("PREPARED_PRODUCT"), PreparedProductRoutes);
 
 // ==================== ERROR HANDLING ====================
 app.use(notFoundHandler);
