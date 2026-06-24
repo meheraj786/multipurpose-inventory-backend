@@ -15,27 +15,15 @@ router.post(
   validateRequest(RawProductValidation.createRawProductZodSchema),
   RawProductController.createRawProduct,
 );
-router.get(
-  "/",
-  checkPermission("RAW_PRODUCT"),
-  RawProductController.getAllRawProducts,
-);
-router.get(
-  "/:id",
-  checkPermission("RAW_PRODUCT"),
-  RawProductController.getSingleRawProduct,
-);
+router.get("/", checkPermission("RAW_PRODUCT"), RawProductController.getAllRawProducts);
+router.get("/:id", checkPermission("RAW_PRODUCT"), RawProductController.getSingleRawProduct);
 router.patch(
   "/:id",
   checkPermission("RAW_PRODUCT"),
   validateRequest(RawProductValidation.updateRawProductZodSchema),
   RawProductController.updateRawProduct,
 );
-router.delete(
-  "/:id",
-  checkPermission("RAW_PRODUCT"),
-  RawProductController.deleteRawProduct,
-);
+router.delete("/:id", checkPermission("RAW_PRODUCT"), RawProductController.deleteRawProduct);
 router.post(
   "/:id/stock-in",
   checkPermission("RAW_PRODUCT"),

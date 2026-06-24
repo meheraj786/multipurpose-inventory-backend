@@ -3,19 +3,11 @@ import httpStatus from "http-status";
 import { sendResponse } from "../../shared/utils/response.js";
 import { RawProductService } from "./rawProduct.service.js";
 
-const createRawProduct = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const createRawProduct = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const accountId = req.user?.accountId as string;
     const userId = req.user?.userId as string;
-    const result = await RawProductService.createRawProduct(
-      req.body,
-      accountId,
-      userId,
-    );
+    const result = await RawProductService.createRawProduct(req.body, accountId, userId);
     sendResponse(res, {
       statusCode: httpStatus.CREATED,
       success: true,
@@ -27,11 +19,7 @@ const createRawProduct = async (
   }
 };
 
-const getAllRawProducts = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const getAllRawProducts = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const accountId = req.user?.accountId as string;
     const page = parseInt(req.query.page as string, 10) || 1;
@@ -60,11 +48,7 @@ const getAllRawProducts = async (
   }
 };
 
-const getSingleRawProduct = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const getSingleRawProduct = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
     const accountId = req.user?.accountId as string;
@@ -80,22 +64,13 @@ const getSingleRawProduct = async (
   }
 };
 
-const updateRawProduct = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const updateRawProduct = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
     const accountId = req.user?.accountId as string;
     const userId = req.user?.userId as string;
     const { accountId: _, ...rest } = req.body;
-    const result = await RawProductService.updateRawProduct(
-      id,
-      accountId,
-      rest,
-      userId,
-    );
+    const result = await RawProductService.updateRawProduct(id, accountId, rest, userId);
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,
@@ -107,20 +82,12 @@ const updateRawProduct = async (
   }
 };
 
-const deleteRawProduct = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const deleteRawProduct = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
     const accountId = req.user?.accountId as string;
     const userId = req.user?.userId as string;
-    const result = await RawProductService.deleteRawProduct(
-      id,
-      accountId,
-      userId,
-    );
+    const result = await RawProductService.deleteRawProduct(id, accountId, userId);
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,
@@ -137,12 +104,7 @@ const stockIn = async (req: Request, res: Response, next: NextFunction) => {
     const rawProductId = req.params.id as string;
     const accountId = req.user?.accountId as string;
     const userId = req.user?.userId as string;
-    const result = await RawProductService.stockIn(
-      rawProductId,
-      accountId,
-      userId,
-      req.body,
-    );
+    const result = await RawProductService.stockIn(rawProductId, accountId, userId, req.body);
     sendResponse(res, {
       statusCode: httpStatus.CREATED,
       success: true,

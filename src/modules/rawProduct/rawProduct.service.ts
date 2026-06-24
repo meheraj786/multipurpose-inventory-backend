@@ -1,8 +1,4 @@
-import {
-  type Prisma,
-  SystemAction,
-  SystemModule,
-} from "../../generated/prisma/index.js";
+import { type Prisma, SystemAction, SystemModule } from "../../generated/prisma/index.js";
 import prisma from "../../shared/utils/prisma.js";
 import { ActivityLogService } from "../activityLog/activityLog.service.js";
 import { TrashService } from "../trash/trash.service.js";
@@ -12,11 +8,7 @@ import type {
   RawProductStockInInput,
 } from "./rawProduct.validation.js";
 
-const createRawProduct = async (
-  data: CreateRawProductInput,
-  accountId: string,
-  userId: string,
-) => {
+const createRawProduct = async (data: CreateRawProductInput, accountId: string, userId: string) => {
   const unit = await prisma.unit.findUnique({ where: { id: data.unitId } });
   if (!unit) throw new Error("Unit not found");
 
@@ -80,10 +72,7 @@ const getAllRawProducts = async (
 
   const dataWithStock = data.map((rp) => ({
     ...rp,
-    currentStock: rp.rawProductStocks.reduce(
-      (sum, s) => sum + Number(s.quantity),
-      0,
-    ),
+    currentStock: rp.rawProductStocks.reduce((sum, s) => sum + Number(s.quantity), 0),
   }));
 
   return {
@@ -112,10 +101,7 @@ const getSingleRawProduct = async (id: string, accountId: string) => {
 
   if (!rawProduct) throw new Error("Raw product not found");
 
-  const currentStock = rawProduct.rawProductStocks.reduce(
-    (sum, s) => sum + Number(s.quantity),
-    0,
-  );
+  const currentStock = rawProduct.rawProductStocks.reduce((sum, s) => sum + Number(s.quantity), 0);
 
   return { ...rawProduct, currentStock };
 };
@@ -153,11 +139,7 @@ const updateRawProduct = async (
   return updated;
 };
 
-const deleteRawProduct = async (
-  id: string,
-  accountId: string,
-  userId: string,
-) => {
+const deleteRawProduct = async (id: string, accountId: string, userId: string) => {
   return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const rawProduct = await tx.rawProduct.findFirst({
       where: { id, accountId, isDeleted: false },
@@ -168,9 +150,7 @@ const deleteRawProduct = async (
       where: { rawProductId: id },
     });
     if (usedInRecipe > 0) {
-      throw new Error(
-        "Cannot delete raw product that is used in a prepared product recipe",
-      );
+      throw new Error("Cannot delete raw product that is used in a prepared product recipe");
     }
 
     const result = await tx.rawProduct.update({

@@ -84,7 +84,12 @@ app.use("/api/v1/units", UnitRoutes);
 app.use("/api/v1/suppliers", authenticate, checkPermission("SUPPLIER"), SupplierRoutes);
 app.use("/api/v1/purchases", authenticate, checkPermission("PURCHASE"), PurchaseRoutes);
 app.use("/api/v1/raw-products", authenticate, checkPermission("RAW_PRODUCT"), RawProductRoutes);
-app.use("/api/v1/prepared-products", authenticate, checkPermission("PREPARED_PRODUCT"), PreparedProductRoutes);
+app.use(
+  "/api/v1/prepared-products",
+  authenticate,
+  checkPermission("PREPARED_PRODUCT"),
+  PreparedProductRoutes,
+);
 
 // ==================== ERROR HANDLING ====================
 app.use(notFoundHandler);
