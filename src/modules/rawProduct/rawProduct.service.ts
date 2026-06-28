@@ -227,7 +227,53 @@ const stockIn = async (
 
   return stock;
 };
-
+const getAllStocks = async (
+  accountId: string,
+  page = 1,
+  limit = 10,
+  search?: string,
+  rawProductId?: string,
+  supplierId?: string,
+) => {
+  const skip = (page - 1) * limit;
+ 
+  const where: Prisma.RawProductStockWhereInput = {
+    accountId,
+    isDeleted: false,
+    ...(rawProductId && { rawProductId }),
+    ...(supplierId && { supplierId }),
+    ...(search && {
+      rawProduct: {
+        name: { contains: search, mode: "insensitive" },
+      },
+    }),
+  };
+ 
+  const [data, total] = await Promise.all([
+    prisma.rawProductStock.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy: { createdAt: "desc" },
+      include: {
+        rawProduct: {
+          select: {
+            id: true,
+            name: true,
+            unit: { select: { id: true, name: true, symbol: true } },
+          },
+        },
+        supplier: { select: { id: true, name: true } },
+      },
+    }),
+    prisma.rawProductStock.count({ where }),
+  ]);
+ 
+  return {
+    data,
+    meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+  };
+};
 export const RawProductService = {
   createRawProduct,
   getAllRawProducts,
@@ -235,4 +281,5 @@ export const RawProductService = {
   updateRawProduct,
   deleteRawProduct,
   stockIn,
+  getAllStocks
 };

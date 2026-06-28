@@ -115,6 +115,34 @@ const stockIn = async (req: Request, res: Response, next: NextFunction) => {
     next(error);
   }
 };
+const getAllStocks = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const accountId = req.user?.accountId as string;
+    const page = parseInt(req.query.page as string, 10) || 1;
+    const limit = parseInt(req.query.limit as string, 10) || 10;
+    const search = req.query.search as string | undefined;
+    const rawProductId = req.query.rawProductId as string | undefined;
+    const supplierId = req.query.supplierId as string | undefined;
+ 
+    const result = await RawProductService.getAllStocks(
+      accountId,
+      page,
+      limit,
+      search,
+      rawProductId,
+      supplierId,
+    );
+    sendResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: "Raw product stocks fetched successfully",
+      data: result.data,
+      meta: result.meta,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 export const RawProductController = {
   createRawProduct,
@@ -123,4 +151,5 @@ export const RawProductController = {
   updateRawProduct,
   deleteRawProduct,
   stockIn,
+  getAllStocks
 };

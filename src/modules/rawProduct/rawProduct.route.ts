@@ -30,5 +30,10 @@ router.post(
   validateRequest(RawProductValidation.stockInZodSchema),
   RawProductController.stockIn,
 );
+router.get(
+  "/stocks/all",
+  checkPermission("RAW_PRODUCT"),
+  RawProductController.getAllStocks,
+);
 
 export const RawProductRoutes: Router = router;
