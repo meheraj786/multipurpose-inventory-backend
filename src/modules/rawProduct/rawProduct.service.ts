@@ -236,7 +236,7 @@ const getAllStocks = async (
   supplierId?: string,
 ) => {
   const skip = (page - 1) * limit;
- 
+
   const where: Prisma.RawProductStockWhereInput = {
     accountId,
     isDeleted: false,
@@ -248,7 +248,7 @@ const getAllStocks = async (
       },
     }),
   };
- 
+
   const [data, total] = await Promise.all([
     prisma.rawProductStock.findMany({
       where,
@@ -268,7 +268,7 @@ const getAllStocks = async (
     }),
     prisma.rawProductStock.count({ where }),
   ]);
- 
+
   return {
     data,
     meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
@@ -281,5 +281,5 @@ export const RawProductService = {
   updateRawProduct,
   deleteRawProduct,
   stockIn,
-  getAllStocks
+  getAllStocks,
 };

@@ -123,7 +123,7 @@ const getAllStocks = async (req: Request, res: Response, next: NextFunction) => 
     const search = req.query.search as string | undefined;
     const rawProductId = req.query.rawProductId as string | undefined;
     const supplierId = req.query.supplierId as string | undefined;
- 
+
     const result = await RawProductService.getAllStocks(
       accountId,
       page,
@@ -151,5 +151,5 @@ export const RawProductController = {
   updateRawProduct,
   deleteRawProduct,
   stockIn,
-  getAllStocks
+  getAllStocks,
 };
