@@ -9,6 +9,12 @@ import { ActivityLogService } from "../activityLog/activityLog.service.js";
 import { TrashService } from "../trash/trash.service.js";
 import type { CreateSaleInput, UpdateSaleInput } from "./sale.validation.js";
 import type { PayDueInput } from "../invoice/invoice.validation.js";
+import {
+  assertSufficientStock,
+  deductSaleItemsStock,
+  readdSaleItemsStock,
+  type SaleStockItem,
+} from "./sale.stock.util.js";
 
 const createSale = async (data: CreateSaleInput, accountId: string, userId: string) => {
   if (!accountId) throw new Error("accountId is required");
@@ -27,50 +33,88 @@ const createSale = async (data: CreateSaleInput, accountId: string, userId: stri
     });
 
     if (data.saleItems && data.saleItems.length > 0) {
+      const stockItems: SaleStockItem[] = [];
+
       for (const item of data.saleItems) {
-        const product = await tx.product.findUnique({ where: { id: item.productId } });
-        if (!product) throw new Error(`Product not found: ${item.productId}`);
+        if (item.itemType === "PREPARED_PRODUCT") {
+          if (!item.preparedProductId) {
+            throw new Error("preparedProductId is required for PREPARED_PRODUCT items");
+          }
 
-        const latestStock = await tx.productStock.findFirst({
-          where: { productId: item.productId, accountId, isDeleted: false },
-          orderBy: { createdAt: "desc" },
-        });
+          const preparedProduct = await tx.preparedProduct.findFirst({
+            where: { id: item.preparedProductId, accountId, isDeleted: false },
+          });
+          if (!preparedProduct) {
+            throw new Error(`Prepared product not found: ${item.preparedProductId}`);
+          }
 
-        const purchasePrice = latestStock ? Number(latestStock.purchasePrice) : 0;
-        const unitId = item.unitId ?? product.unitId;
+          const unitId = item.unitId ?? preparedProduct.unitId;
+          const purchasePrice = Number(preparedProduct.rawMaterialCost ?? 0);
 
-        await tx.saleItem.create({
-          data: {
-            saleId: sale.id,
+          await tx.saleItem.create({
+            data: {
+              saleId: sale.id,
+              itemType: "PREPARED_PRODUCT",
+              preparedProductId: item.preparedProductId,
+              unitId,
+              quantity: item.quantity,
+              convertedQty: item.quantity,
+              purchasePrice,
+              sellPrice: item.sellPrice,
+              discount: item.discount ?? 0,
+              accountId,
+            },
+          });
+
+          stockItems.push({
+            itemType: "PREPARED_PRODUCT",
+            preparedProductId: item.preparedProductId,
+            unitId,
+            quantity: item.quantity,
+          });
+        } else {
+          if (!item.productId) {
+            throw new Error("productId is required for PRODUCT items");
+          }
+
+          const product = await tx.product.findFirst({
+            where: { id: item.productId, accountId, isDeleted: false },
+          });
+          if (!product) throw new Error(`Product not found: ${item.productId}`);
+
+          const latestStock = await tx.productStock.findFirst({
+            where: { productId: item.productId, accountId, isDeleted: false },
+            orderBy: { createdAt: "desc" },
+          });
+
+          const purchasePrice = latestStock ? Number(latestStock.purchasePrice) : 0;
+          const unitId = item.unitId ?? product.unitId;
+
+          await tx.saleItem.create({
+            data: {
+              saleId: sale.id,
+              itemType: "PRODUCT",
+              productId: item.productId,
+              unitId,
+              quantity: item.quantity,
+              convertedQty: item.quantity,
+              purchasePrice,
+              sellPrice: item.sellPrice,
+              discount: item.discount ?? 0,
+              accountId,
+            },
+          });
+
+          stockItems.push({
+            itemType: "PRODUCT",
             productId: item.productId,
             unitId,
             quantity: item.quantity,
-            convertedQty: item.quantity,
-            purchasePrice,
-            sellPrice: item.sellPrice,
-            discount: item.discount ?? 0,
-            accountId,
-          },
-        });
-
-        let remaining = item.quantity;
-        const stocks = await tx.productStock.findMany({
-          where: { productId: item.productId, accountId, isDeleted: false, quantity: { gt: 0 } },
-          orderBy: { createdAt: "asc" },
-        });
-
-        for (const stock of stocks) {
-          if (remaining <= 0) break;
-          const deduct = Math.min(remaining, Number(stock.quantity));
-          await tx.productStock.update({
-            where: { id: stock.id },
-            data: { quantity: { decrement: deduct } },
           });
-          remaining -= deduct;
         }
-
-        if (remaining > 0) throw new Error(`Insufficient stock for product: ${item.productId}`);
       }
+
+      await deductSaleItemsStock(tx, stockItems, accountId);
     }
 
     if (data.saleServices && data.saleServices.length > 0) {
@@ -102,7 +146,7 @@ const createSale = async (data: CreateSaleInput, accountId: string, userId: stri
       where: { id: sale.id },
       include: {
         customer: true,
-        saleItems: { include: { product: true } },
+        saleItems: { include: { product: true, preparedProduct: true } },
         saleServices: { include: { service: true } },
       },
     });
@@ -136,7 +180,7 @@ const getAllSales = async (
       orderBy: { createdAt: "desc" },
       include: {
         customer: true,
-        saleItems: { include: { product: true } },
+        saleItems: { include: { product: true, preparedProduct: true } },
         saleServices: { include: { service: true } },
       },
     }),
@@ -154,7 +198,7 @@ const getSingleSale = async (id: string, accountId: string) => {
     where: { id, accountId, isDeleted: false },
     include: {
       customer: true,
-      saleItems: { include: { product: true } },
+      saleItems: { include: { product: true, preparedProduct: true } },
       saleServices: { include: { service: true } },
       invoices: true,
     },
@@ -261,33 +305,7 @@ const deleteSale = async (id: string, accountId: string, userId: string) => {
     });
     if (!sale) throw new Error("Sale not found");
 
-    for (const item of sale.saleItems) {
-      if (!item.productId) continue;
-
-      const latestStock = await tx.productStock.findFirst({
-        where: { productId: item.productId, accountId, isDeleted: false },
-        orderBy: { createdAt: "desc" },
-      });
-
-      if (latestStock) {
-        await tx.productStock.update({
-          where: { id: latestStock.id },
-          data: { quantity: { increment: Number(item.quantity) } },
-        });
-      } else {
-        await tx.productStock.create({
-          data: {
-            productId: item.productId,
-            quantity: Number(item.quantity),
-            purchasePrice: Number(item.purchasePrice),
-            rate: Number(item.purchasePrice),
-            totalCost: 0,
-            unitId: item.unitId,
-            accountId,
-          },
-        });
-      }
-    }
+    await readdSaleItemsStock(tx, sale.saleItems as SaleStockItem[], accountId);
 
     const result = await tx.sale.update({
       where: { id },
@@ -322,57 +340,11 @@ const restoreSale = async (id: string, accountId: string, userId: string) => {
     });
     if (!sale) throw new Error("Sale not found in trash");
 
-    for (const item of sale.saleItems) {
-      if (!item.productId) continue;
+    const stockItems = sale.saleItems as SaleStockItem[];
 
-      const stocks = await tx.productStock.findMany({
-        where: {
-          productId: item.productId,
-          accountId,
-          isDeleted: false,
-          quantity: { gt: 0 },
-        },
-        orderBy: { createdAt: "asc" },
-      });
-
-      const totalAvailable = stocks.reduce((sum, s) => sum + Number(s.quantity), 0);
-
-      if (totalAvailable < Number(item.quantity)) {
-        const product = await tx.product.findUnique({
-          where: { id: item.productId },
-          select: { name: true },
-        });
-        throw new Error(
-          `Insufficient stock to restore sale. Product "${product?.name ?? item.productId}" needs ${item.quantity} but only ${totalAvailable} available.`,
-        );
-      }
-    }
-
-    for (const item of sale.saleItems) {
-      if (!item.productId) continue;
-
-      let remaining = Number(item.quantity);
-
-      const stocks = await tx.productStock.findMany({
-        where: {
-          productId: item.productId,
-          accountId,
-          isDeleted: false,
-          quantity: { gt: 0 },
-        },
-        orderBy: { createdAt: "asc" },
-      });
-
-      for (const stock of stocks) {
-        if (remaining <= 0) break;
-        const deduct = Math.min(remaining, Number(stock.quantity));
-        await tx.productStock.update({
-          where: { id: stock.id },
-          data: { quantity: { decrement: deduct } },
-        });
-        remaining -= deduct;
-      }
-    }
+    // Verify there's enough stock for every item before touching anything.
+    await assertSufficientStock(tx, stockItems, accountId);
+    await deductSaleItemsStock(tx, stockItems, accountId);
 
     const result = await tx.sale.update({
       where: { id },
