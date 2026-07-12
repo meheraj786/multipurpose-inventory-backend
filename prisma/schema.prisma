@@ -239,26 +239,26 @@ model Supplier {
 // ==================== PRODUCT ====================
 
 model Product {
-  id                     String    @id @default(uuid())
-  name                   String
-  img                    String?
-  description            String?
-  sku                    String?
-  tax                    Decimal?
-  defaultPurchasePrice   Decimal?
-  defaultSalePrice       Decimal?
-  lowStockAlert          String?
-  categoryId             String
-  category               Category     @relation(fields: [categoryId], references: [id])
-  subCategoryId          String?
-  subCategory            SubCategory? @relation(fields: [subCategoryId], references: [id])
-  unitId                 String
-  unit                   Unit         @relation(fields: [unitId], references: [id])
-  accountId              String
-  account                Account      @relation(fields: [accountId], references: [id])
-  isDeleted              Boolean      @default(false)
-  createdAt              DateTime     @default(now())
-  updatedAt              DateTime     @updatedAt
+  id                   String       @id @default(uuid())
+  name                 String
+  img                  String?
+  description          String?
+  sku                  String?
+  tax                  Decimal?
+  defaultPurchasePrice Decimal?
+  defaultSalePrice     Decimal?
+  lowStockAlert        String?
+  categoryId           String
+  category             Category     @relation(fields: [categoryId], references: [id])
+  subCategoryId        String?
+  subCategory          SubCategory? @relation(fields: [subCategoryId], references: [id])
+  unitId               String
+  unit                 Unit         @relation(fields: [unitId], references: [id])
+  accountId            String
+  account              Account      @relation(fields: [accountId], references: [id])
+  isDeleted            Boolean      @default(false)
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
 
   productStocks          ProductStock[]
   saleItems              SaleItem[]
@@ -351,26 +351,28 @@ model RawProductStock {
 // ==================== PREPARED PRODUCT ====================
 
 model PreparedProduct {
-  id               String    @id @default(uuid())
-  name             String
-  none             String?
-  img              String?
-  description      String?
-  categoryId       String
-  subCategoryId    String?
-  rawMaterialCost  Decimal?
-  expiryDate       DateTime?
-  defaultSalePrice Decimal?
-  unitId           String
-  unit             Unit      @relation(fields: [unitId], references: [id])
-  isDeleted        Boolean   @default(false)
-  accountId        String
-  account          Account   @relation(fields: [accountId], references: [id])
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-
+  id                    String                 @id @default(uuid())
+  name                  String
+  none                  String?
+  img                   String?
+  description           String?
+  categoryId            String
+  subCategoryId         String?
+  rawMaterialCost       Decimal?
+  expiryDate            DateTime?
+  defaultSalePrice      Decimal?
+  unitId                String
+  unit                  Unit                   @relation(fields: [unitId], references: [id])
+  isDeleted             Boolean                @default(false)
+  accountId             String
+  account               Account                @relation(fields: [accountId], references: [id])
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
   preparedProductStocks PreparedProductStock[]
   preparedProductItems  PreparedProductItem[]
+  saleItems             SaleItem[]
+
+  sales Sale[]
 
   @@index([accountId])
   @@index([name])
@@ -504,19 +506,21 @@ model Customer {
 // }
 
 model Sale {
-  id             String        @id @default(uuid())
-  customerId     String?
-  customer       Customer?     @relation(fields: [customerId], references: [id])
-  customerNumber String?
-  paymentMethod  PaymentMethod @default(CASH)
-  payments       Json?        
-  discount       Decimal?      @default(0)
-  due            Decimal?      @default(0)
-  isDeleted      Boolean       @default(false)
-  accountId      String
-  account        Account       @relation(fields: [accountId], references: [id])
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  id                String          @id @default(uuid())
+  customerId        String?
+  customer          Customer?       @relation(fields: [customerId], references: [id])
+  customerNumber    String?
+  paymentMethod     PaymentMethod   @default(CASH)
+  payments          Json?
+  discount          Decimal?        @default(0)
+  due               Decimal?        @default(0)
+  isDeleted         Boolean         @default(false)
+  accountId         String
+  account           Account         @relation(fields: [accountId], references: [id])
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  preparedProductId String?
+  preparedProduct   PreparedProduct? @relation(fields: [preparedProductId], references: [id])
 
   saleItems    SaleItem[]
   saleServices SaleService[]
@@ -528,11 +532,18 @@ model Sale {
 }
 
 model SaleItem {
-  id            String   @id @default(uuid())
-  saleId        String
-  sale          Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  productId     String?
-  product       Product? @relation(fields: [productId], references: [id])
+  id     String @id @default(uuid())
+  saleId String
+  sale   Sale   @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  itemType SaleItemType @default(PRODUCT)
+
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id])
+
+  preparedProductId String?
+  preparedProduct   PreparedProduct? @relation(fields: [preparedProductId], references: [id])
+
   unitId        String
   unit          Unit     @relation(fields: [unitId], references: [id])
   quantity      Decimal
@@ -546,6 +557,7 @@ model SaleItem {
 
   @@index([saleId])
   @@index([productId])
+  @@index([preparedProductId])
   @@index([accountId])
 }
 
@@ -749,4 +761,9 @@ enum InvoiceStatus {
   PAID
   PARTIALLY_PAID
   CANCELLED
+}
+
+enum SaleItemType {
+  PRODUCT
+  PREPARED_PRODUCT
 }
