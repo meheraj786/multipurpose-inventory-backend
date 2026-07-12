@@ -371,6 +371,7 @@ model PreparedProduct {
   preparedProductStocks PreparedProductStock[]
   preparedProductItems  PreparedProductItem[]
   saleItems             SaleItem[]
+  
 
   sales Sale[]
 
@@ -532,28 +533,28 @@ model Sale {
 }
 
 model SaleItem {
-  id     String @id @default(uuid())
-  saleId String
-  sale   Sale   @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  id                String           @id @default(uuid())
+  saleId            String
+  sale              Sale             @relation(fields: [saleId], references: [id], onDelete: Cascade)
 
-  itemType SaleItemType @default(PRODUCT)
+  itemType          SaleItemType     @default(PRODUCT)
 
-  productId String?
-  product   Product? @relation(fields: [productId], references: [id])
+  productId         String?
+  product           Product?         @relation(fields: [productId], references: [id])
 
   preparedProductId String?
   preparedProduct   PreparedProduct? @relation(fields: [preparedProductId], references: [id])
 
-  unitId        String
-  unit          Unit     @relation(fields: [unitId], references: [id])
-  quantity      Decimal
-  convertedQty  Decimal
-  purchasePrice Decimal
-  sellPrice     Decimal
-  discount      Decimal? @default(0)
-  accountId     String
-  account       Account  @relation(fields: [accountId], references: [id])
-  createdAt     DateTime @default(now())
+  unitId            String
+  unit              Unit             @relation(fields: [unitId], references: [id])
+  quantity          Decimal
+  convertedQty      Decimal
+  purchasePrice     Decimal
+  sellPrice         Decimal
+  discount          Decimal?         @default(0)
+  accountId         String
+  account           Account          @relation(fields: [accountId], references: [id])
+  createdAt         DateTime         @default(now())
 
   @@index([saleId])
   @@index([productId])
