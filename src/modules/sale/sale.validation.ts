@@ -18,8 +18,7 @@ const saleItemSchema = z
     discount: z.number().min(0).default(0),
   })
   .refine(
-    (data) =>
-      data.itemType === "PREPARED_PRODUCT" ? !!data.preparedProductId : !!data.productId,
+    (data) => (data.itemType === "PREPARED_PRODUCT" ? !!data.preparedProductId : !!data.productId),
     {
       message:
         "productId is required for PRODUCT items, preparedProductId is required for PREPARED_PRODUCT items",
