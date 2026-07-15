@@ -322,9 +322,6 @@
 //   produceStock,
 // };
 
-
-
-
 import { type Prisma, SystemAction, SystemModule } from "../../generated/prisma/index.js";
 import prisma from "../../shared/utils/prisma.js";
 import { ActivityLogService } from "../activityLog/activityLog.service.js";
@@ -471,10 +468,7 @@ const getAllPreparedProducts = async (
 
   const dataWithStock = data.map((pp) => ({
     ...pp,
-    totalStock: pp.preparedProductStocks.reduce(
-      (sum, stock) => sum + Number(stock.quantity),
-      0,
-    ),
+    totalStock: pp.preparedProductStocks.reduce((sum, stock) => sum + Number(stock.quantity), 0),
   }));
 
   return {
@@ -488,10 +482,7 @@ const getAllPreparedProducts = async (
   };
 };
 
-const getSinglePreparedProduct = async (
-  id: string,
-  accountId: string,
-) => {
+const getSinglePreparedProduct = async (id: string, accountId: string) => {
   const preparedProduct = await prisma.preparedProduct.findFirst({
     where: {
       id,
@@ -621,11 +612,7 @@ const updatePreparedProduct = async (
   return updated;
 };
 
-const deletePreparedProduct = async (
-  id: string,
-  accountId: string,
-  userId: string,
-) => {
+const deletePreparedProduct = async (id: string, accountId: string, userId: string) => {
   return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const preparedProduct = await tx.preparedProduct.findFirst({
       where: {
@@ -650,9 +637,7 @@ const deletePreparedProduct = async (
     });
 
     if (activeStock > 0) {
-      throw new Error(
-        "Cannot delete prepared product with active stock. Clear stock first.",
-      );
+      throw new Error("Cannot delete prepared product with active stock. Clear stock first.");
     }
 
     await tx.preparedProductItem.deleteMany({

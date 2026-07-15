@@ -8,11 +8,7 @@ const createPreparedProduct = async (req: Request, res: Response, next: NextFunc
     const accountId = req.user?.accountId as string;
     const userId = req.user?.userId as string;
 
-    const result = await PreparedProductService.createPreparedProduct(
-      req.body,
-      accountId,
-      userId,
-    );
+    const result = await PreparedProductService.createPreparedProduct(req.body, accountId, userId);
 
     sendResponse(res, {
       statusCode: httpStatus.CREATED,
@@ -79,12 +75,7 @@ const updatePreparedProduct = async (req: Request, res: Response, next: NextFunc
 
     const { accountId: _, ...rest } = req.body;
 
-    const result = await PreparedProductService.updatePreparedProduct(
-      id,
-      accountId,
-      rest,
-      userId,
-    );
+    const result = await PreparedProductService.updatePreparedProduct(id, accountId, rest, userId);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -103,11 +94,7 @@ const deletePreparedProduct = async (req: Request, res: Response, next: NextFunc
     const accountId = req.user?.accountId as string;
     const userId = req.user?.userId as string;
 
-    const result = await PreparedProductService.deletePreparedProduct(
-      id,
-      accountId,
-      userId,
-    );
+    const result = await PreparedProductService.deletePreparedProduct(id, accountId, userId);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
