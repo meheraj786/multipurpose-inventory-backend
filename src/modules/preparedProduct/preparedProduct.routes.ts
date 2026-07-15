@@ -15,30 +15,36 @@ router.post(
   validateRequest(PreparedProductValidation.createPreparedProductZodSchema),
   PreparedProductController.createPreparedProduct,
 );
+
 router.get(
   "/",
   checkPermission("PREPARED_PRODUCT"),
   PreparedProductController.getAllPreparedProducts,
 );
+
 router.get(
   "/:id",
   checkPermission("PREPARED_PRODUCT"),
   PreparedProductController.getSinglePreparedProduct,
 );
+
 router.patch(
   "/:id",
   checkPermission("PREPARED_PRODUCT"),
   validateRequest(PreparedProductValidation.updatePreparedProductZodSchema),
   PreparedProductController.updatePreparedProduct,
 );
+
 router.delete(
   "/:id",
   checkPermission("PREPARED_PRODUCT"),
   PreparedProductController.deletePreparedProduct,
 );
+
 router.post(
   "/:id/produce",
   checkPermission("PREPARED_PRODUCT"),
+  validateRequest(PreparedProductValidation.produceStockZodSchema),
   PreparedProductController.produceStock,
 );
 

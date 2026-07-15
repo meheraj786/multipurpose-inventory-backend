@@ -7,7 +7,13 @@ const createPreparedProduct = async (req: Request, res: Response, next: NextFunc
   try {
     const accountId = req.user?.accountId as string;
     const userId = req.user?.userId as string;
-    const result = await PreparedProductService.createPreparedProduct(req.body, accountId, userId);
+
+    const result = await PreparedProductService.createPreparedProduct(
+      req.body,
+      accountId,
+      userId,
+    );
+
     sendResponse(res, {
       statusCode: httpStatus.CREATED,
       success: true,
@@ -34,6 +40,7 @@ const getAllPreparedProducts = async (req: Request, res: Response, next: NextFun
       search,
       categoryId,
     );
+
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,
@@ -50,7 +57,9 @@ const getSinglePreparedProduct = async (req: Request, res: Response, next: NextF
   try {
     const id = req.params.id as string;
     const accountId = req.user?.accountId as string;
+
     const result = await PreparedProductService.getSinglePreparedProduct(id, accountId);
+
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,
@@ -67,8 +76,16 @@ const updatePreparedProduct = async (req: Request, res: Response, next: NextFunc
     const id = req.params.id as string;
     const accountId = req.user?.accountId as string;
     const userId = req.user?.userId as string;
+
     const { accountId: _, ...rest } = req.body;
-    const result = await PreparedProductService.updatePreparedProduct(id, accountId, rest, userId);
+
+    const result = await PreparedProductService.updatePreparedProduct(
+      id,
+      accountId,
+      rest,
+      userId,
+    );
+
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,
@@ -85,7 +102,13 @@ const deletePreparedProduct = async (req: Request, res: Response, next: NextFunc
     const id = req.params.id as string;
     const accountId = req.user?.accountId as string;
     const userId = req.user?.userId as string;
-    const result = await PreparedProductService.deletePreparedProduct(id, accountId, userId);
+
+    const result = await PreparedProductService.deletePreparedProduct(
+      id,
+      accountId,
+      userId,
+    );
+
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,
@@ -102,13 +125,21 @@ const produceStock = async (req: Request, res: Response, next: NextFunction) => 
     const id = req.params.id as string;
     const accountId = req.user?.accountId as string;
     const userId = req.user?.userId as string;
-    const { quantity } = req.body;
+
+    const { quantity, expiryDate } = req.body;
 
     if (!quantity || quantity <= 0) {
       throw new Error("Quantity must be a positive number");
     }
 
-    const result = await PreparedProductService.produceStock(id, accountId, userId, quantity);
+    const result = await PreparedProductService.produceStock(
+      id,
+      accountId,
+      userId,
+      quantity,
+      expiryDate,
+    );
+
     sendResponse(res, {
       statusCode: httpStatus.CREATED,
       success: true,

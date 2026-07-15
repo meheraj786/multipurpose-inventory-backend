@@ -14,7 +14,6 @@ const createPreparedProductZodSchema = z.object({
     subCategoryId: z.string().optional(),
     rawMaterialCost: z.number().min(0).optional(),
     defaultSalePrice: z.number().min(0).optional(),
-    expiryDate: z.string().datetime().optional(),
     description: z.string().optional(),
     img: z.string().optional(),
     items: z.array(preparedProductItemSchema).min(1, "Recipe must have at least one ingredient"),
@@ -29,18 +28,26 @@ const updatePreparedProductZodSchema = z.object({
     subCategoryId: z.string().optional(),
     rawMaterialCost: z.number().min(0).optional(),
     defaultSalePrice: z.number().min(0).optional(),
-    expiryDate: z.string().datetime().optional(),
     description: z.string().optional(),
     img: z.string().optional(),
     items: z.array(preparedProductItemSchema).optional(),
   }),
 });
 
+const produceStockZodSchema = z.object({
+  body: z.object({
+    quantity: z.number().positive("Quantity must be greater than 0"),
+    expiryDate: z.string().datetime().optional(),
+  }),
+});
+
 export type PreparedProductItemInput = z.infer<typeof preparedProductItemSchema>;
 export type CreatePreparedProductInput = z.infer<typeof createPreparedProductZodSchema>["body"];
 export type UpdatePreparedProductInput = z.infer<typeof updatePreparedProductZodSchema>["body"];
+export type ProduceStockInput = z.infer<typeof produceStockZodSchema>["body"];
 
 export const PreparedProductValidation = {
   createPreparedProductZodSchema,
   updatePreparedProductZodSchema,
+  produceStockZodSchema,
 };
