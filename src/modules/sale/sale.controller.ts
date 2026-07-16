@@ -53,8 +53,11 @@ const getAllSales = async (req: Request, res: Response, next: NextFunction) => {
     const page = parseInt(req.query.page as string, 10) || 1;
     const limit = parseInt(req.query.limit as string, 10) || 10;
     const search = req.query.search as string | undefined;
+    const startDate = req.query.startDate as string | undefined;
+    const endDate = req.query.endDate as string | undefined;
+    const dueOnly = req.query.dueOnly === "true";
 
-    const result = await SaleService.getAllSales(accountId, page, limit, search);
+    const result = await SaleService.getAllSales(accountId, page, limit, search, startDate, endDate, dueOnly);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
