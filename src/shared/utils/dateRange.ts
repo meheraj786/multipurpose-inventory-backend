@@ -37,7 +37,7 @@ export const resolveDateRange = (
 
     case "week": {
       const day = now.getUTCDay();
-      const diff = now.getUTCDate() - day + (day === 0 ? -6 : 1); 
+      const diff = now.getUTCDate() - day + (day === 0 ? -6 : 1);
       const start = new Date(now);
       start.setUTCDate(diff);
       return { start: startOfDayUTC(start), end: endOfDayUTC(now) };

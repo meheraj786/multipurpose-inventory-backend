@@ -14,9 +14,7 @@ const calcItemCost = (item: { purchasePrice: unknown; quantity: unknown }) =>
   Number(item.purchasePrice) * Number(item.quantity);
 
 const createdAtWhere = (start?: Date, end?: Date) =>
-  start || end
-    ? { createdAt: { ...(start && { gte: start }), ...(end && { lte: end }) } }
-    : {};
+  start || end ? { createdAt: { ...(start && { gte: start }), ...(end && { lte: end }) } } : {};
 
 // ==================== 1. SALES / AMOUNT / PROFIT ====================
 
@@ -290,7 +288,12 @@ const getCategoryRanking = async (
     revenue: number,
   ) => {
     if (!id) return;
-    const bucket = map.get(id) ?? { id, name: names.get(id) ?? "Uncategorized", quantity: 0, revenue: 0 };
+    const bucket = map.get(id) ?? {
+      id,
+      name: names.get(id) ?? "Uncategorized",
+      quantity: 0,
+      revenue: 0,
+    };
     bucket.quantity += quantity;
     bucket.revenue += revenue;
     map.set(id, bucket);
@@ -299,7 +302,8 @@ const getCategoryRanking = async (
   for (const sale of sales) {
     for (const item of sale.saleItems) {
       const categoryId = item.product?.categoryId ?? item.preparedProduct?.categoryId ?? null;
-      const subCategoryId = item.product?.subCategoryId ?? item.preparedProduct?.subCategoryId ?? null;
+      const subCategoryId =
+        item.product?.subCategoryId ?? item.preparedProduct?.subCategoryId ?? null;
       const revenue = calcItemRevenue(item);
       const quantity = Number(item.quantity);
       bump(categoryAgg, categoryId, categoryNames, quantity, revenue);
@@ -320,10 +324,20 @@ const getCategoryRanking = async (
   return {
     categories: Array.from(categoryAgg.values())
       .sort(sortByRevenue)
-      .map((c) => ({ categoryId: c.id, name: c.name, quantity: c.quantity, revenue: Number(c.revenue.toFixed(2)) })),
+      .map((c) => ({
+        categoryId: c.id,
+        name: c.name,
+        quantity: c.quantity,
+        revenue: Number(c.revenue.toFixed(2)),
+      })),
     subCategories: Array.from(subCategoryAgg.values())
       .sort(sortByRevenue)
-      .map((c) => ({ subCategoryId: c.id, name: c.name, quantity: c.quantity, revenue: Number(c.revenue.toFixed(2)) })),
+      .map((c) => ({
+        subCategoryId: c.id,
+        name: c.name,
+        quantity: c.quantity,
+        revenue: Number(c.revenue.toFixed(2)),
+      })),
   };
 };
 
@@ -355,7 +369,12 @@ const getLowStockAlert = async (accountId: string) => {
         threshold,
       };
     })
-    .filter((p) => p.threshold !== null && !Number.isNaN(p.threshold) && p.currentStock <= (p.threshold as number))
+    .filter(
+      (p) =>
+        p.threshold !== null &&
+        !Number.isNaN(p.threshold) &&
+        p.currentStock <= (p.threshold as number),
+    )
     .sort((a, b) => a.currentStock - b.currentStock);
 
   const lowStockRawProducts = rawProducts
@@ -367,7 +386,12 @@ const getLowStockAlert = async (accountId: string) => {
       currentStock: Number(rp.totalStock),
       threshold: rp.lowStockAlert ? Number(rp.lowStockAlert) : null,
     }))
-    .filter((rp) => rp.threshold !== null && !Number.isNaN(rp.threshold) && rp.currentStock <= (rp.threshold as number))
+    .filter(
+      (rp) =>
+        rp.threshold !== null &&
+        !Number.isNaN(rp.threshold) &&
+        rp.currentStock <= (rp.threshold as number),
+    )
     .sort((a, b) => a.currentStock - b.currentStock);
 
   return { products: lowStockProducts, rawProducts: lowStockRawProducts };
@@ -389,8 +413,19 @@ const getProductRanking = async (
     include: { saleItems: { include: { product: true, preparedProduct: true } } },
   });
 
-  type ProductBucket = { productId: string; name: string; sku: string | null; quantity: number; revenue: number };
-  type PreparedBucket = { preparedProductId: string; name: string; quantity: number; revenue: number };
+  type ProductBucket = {
+    productId: string;
+    name: string;
+    sku: string | null;
+    quantity: number;
+    revenue: number;
+  };
+  type PreparedBucket = {
+    preparedProductId: string;
+    name: string;
+    quantity: number;
+    revenue: number;
+  };
 
   const productAgg = new Map<string, ProductBucket>();
   const preparedAgg = new Map<string, PreparedBucket>();

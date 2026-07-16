@@ -4,7 +4,15 @@ import { sendResponse } from "../../shared/utils/response.js";
 import { DashboardService } from "./dashboard.service.js";
 import type { DateRangePreset } from "../../shared/utils/dateRange.js";
 
-const VALID_RANGES: DateRangePreset[] = ["today", "week", "month", "last3months", "year", "all", "custom"];
+const VALID_RANGES: DateRangePreset[] = [
+  "today",
+  "week",
+  "month",
+  "last3months",
+  "year",
+  "all",
+  "custom",
+];
 
 const parseRangeQuery = (req: Request) => {
   const rawRange = req.query.range as string | undefined;
@@ -23,7 +31,12 @@ const getSalesOverview = async (req: Request, res: Response, next: NextFunction)
     const accountId = req.user?.accountId as string;
     const { range, customStart, customEnd } = parseRangeQuery(req);
 
-    const result = await DashboardService.getSalesOverview(accountId, range, customStart, customEnd);
+    const result = await DashboardService.getSalesOverview(
+      accountId,
+      range,
+      customStart,
+      customEnd,
+    );
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -41,7 +54,12 @@ const getOverviewStats = async (req: Request, res: Response, next: NextFunction)
     const accountId = req.user?.accountId as string;
     const { range, customStart, customEnd } = parseRangeQuery(req);
 
-    const result = await DashboardService.getOverviewStats(accountId, range, customStart, customEnd);
+    const result = await DashboardService.getOverviewStats(
+      accountId,
+      range,
+      customStart,
+      customEnd,
+    );
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -59,7 +77,13 @@ const getTopCustomers = async (req: Request, res: Response, next: NextFunction) 
     const accountId = req.user?.accountId as string;
     const { range, customStart, customEnd, limit } = parseRangeQuery(req);
 
-    const result = await DashboardService.getTopCustomers(accountId, range, customStart, customEnd, limit);
+    const result = await DashboardService.getTopCustomers(
+      accountId,
+      range,
+      customStart,
+      customEnd,
+      limit,
+    );
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -77,7 +101,13 @@ const getDueRanking = async (req: Request, res: Response, next: NextFunction) =>
     const accountId = req.user?.accountId as string;
     const { range, customStart, customEnd, limit } = parseRangeQuery(req);
 
-    const result = await DashboardService.getDueRanking(accountId, range, customStart, customEnd, limit);
+    const result = await DashboardService.getDueRanking(
+      accountId,
+      range,
+      customStart,
+      customEnd,
+      limit,
+    );
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -95,7 +125,12 @@ const getCategoryRanking = async (req: Request, res: Response, next: NextFunctio
     const accountId = req.user?.accountId as string;
     const { range, customStart, customEnd } = parseRangeQuery(req);
 
-    const result = await DashboardService.getCategoryRanking(accountId, range, customStart, customEnd);
+    const result = await DashboardService.getCategoryRanking(
+      accountId,
+      range,
+      customStart,
+      customEnd,
+    );
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -113,7 +148,13 @@ const getProductRanking = async (req: Request, res: Response, next: NextFunction
     const accountId = req.user?.accountId as string;
     const { range, customStart, customEnd, limit } = parseRangeQuery(req);
 
-    const result = await DashboardService.getProductRanking(accountId, range, customStart, customEnd, limit);
+    const result = await DashboardService.getProductRanking(
+      accountId,
+      range,
+      customStart,
+      customEnd,
+      limit,
+    );
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
