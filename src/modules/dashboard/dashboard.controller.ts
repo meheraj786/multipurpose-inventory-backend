@@ -182,6 +182,75 @@ const getLowStockAlert = async (req: Request, res: Response, next: NextFunction)
     next(error);
   }
 };
+const getTopSuppliers = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const accountId = req.user?.accountId as string;
+    const { range, customStart, customEnd, limit } = parseRangeQuery(req);
+
+    const result = await DashboardService.getTopSuppliers(
+      accountId,
+      range,
+      customStart,
+      customEnd,
+      limit,
+    );
+
+    sendResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: "Top suppliers fetched successfully",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getPurchaseOverview = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const accountId = req.user?.accountId as string;
+    const { range, customStart, customEnd } = parseRangeQuery(req);
+
+    const result = await DashboardService.getPurchaseOverview(
+      accountId,
+      range,
+      customStart,
+      customEnd,
+    );
+
+    sendResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: "Purchase overview fetched successfully",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getPurchaseReport = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const accountId = req.user?.accountId as string;
+    const { range, customStart, customEnd } = parseRangeQuery(req);
+
+    const result = await DashboardService.getPurchaseReport(
+      accountId,
+      range,
+      customStart,
+      customEnd,
+    );
+
+    sendResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: "Purchase report fetched successfully",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 export const DashboardController = {
   getSalesOverview,
@@ -191,4 +260,7 @@ export const DashboardController = {
   getCategoryRanking,
   getProductRanking,
   getLowStockAlert,
+  getTopSuppliers,
+  getPurchaseOverview,
+  getPurchaseReport,
 };

@@ -4,6 +4,7 @@ import {
   getPreviousPeriod,
   resolveDateRange,
 } from "../../shared/utils/dateRange.js";
+import { Purchase } from "@/generated/prisma/index.js";
 
 // ==================== SHARED CALC HELPERS ====================
 
@@ -347,7 +348,11 @@ const getLowStockAlert = async (accountId: string) => {
   const [products, rawProducts] = await Promise.all([
     prisma.product.findMany({
       where: { accountId, isDeleted: false },
-      include: { productStocks: { where: { isDeleted: false } }, unit: true, category: true },
+      include: {
+        productStocks: { where: { isDeleted: false } },
+        unit: true,
+        category: true,
+      },
     }),
     prisma.rawProduct.findMany({
       where: { accountId, isDeleted: false },
@@ -410,7 +415,9 @@ const getProductRanking = async (
 
   const sales = await prisma.sale.findMany({
     where: { accountId, isDeleted: false, ...createdAtWhere(start, end) },
-    include: { saleItems: { include: { product: true, preparedProduct: true } } },
+    include: {
+      saleItems: { include: { product: true, preparedProduct: true } },
+    },
   });
 
   type ProductBucket = {
@@ -471,6 +478,184 @@ const getProductRanking = async (
       .map((p) => ({ ...p, revenue: Number(p.revenue.toFixed(2)) })),
   };
 };
+const getTopSuppliers = async (
+  accountId: string,
+  range: DateRangePreset,
+  customStart?: string,
+  customEnd?: string,
+  limit = 10,
+) => {
+  const { start, end } = resolveDateRange(range, customStart, customEnd);
+
+  const purchases = await prisma.purchase.findMany({
+    where: {
+      accountId,
+      isDeleted: false,
+      ...createdAtWhere(start, end),
+    },
+    include: {
+      supplier: true,
+    },
+  });
+
+  type Bucket = {
+    supplierId: string;
+    name: string;
+    companyName: string | null;
+    purchaseCount: number;
+    totalQuantity: number;
+    totalPurchase: number;
+  };
+
+  const map = new Map<string, Bucket>();
+
+  for (const purchase of purchases) {
+    if (!purchase.supplierId || !purchase.supplier) continue;
+
+    const bucket = map.get(purchase.supplierId) ?? {
+      supplierId: purchase.supplierId,
+      name: purchase.supplier.name,
+      companyName: purchase.supplier.companyName ?? null,
+      purchaseCount: 0,
+      totalQuantity: 0,
+      totalPurchase: 0,
+    };
+
+    bucket.purchaseCount += 1;
+    bucket.totalQuantity += Number(purchase.qty);
+    bucket.totalPurchase += Number(purchase.totalCost);
+
+    map.set(purchase.supplierId, bucket);
+  }
+
+  return Array.from(map.values())
+    .sort((a, b) => b.totalPurchase - a.totalPurchase)
+    .slice(0, limit)
+    .map((item) => ({
+      ...item,
+      totalQuantity: Number(item.totalQuantity.toFixed(2)),
+      totalPurchase: Number(item.totalPurchase.toFixed(2)),
+    }));
+};
+const getPurchaseOverview = async (
+  accountId: string,
+  range: DateRangePreset,
+  customStart?: string,
+  customEnd?: string,
+) => {
+  const { start, end } = resolveDateRange(range, customStart, customEnd);
+
+  const purchases = await prisma.purchase.findMany({
+    where: {
+      accountId,
+      isDeleted: false,
+      ...createdAtWhere(start, end),
+    },
+    orderBy: {
+      createdAt: "asc",
+    },
+  });
+
+  let totalCost = 0;
+  let totalQuantity = 0;
+
+  const chartMap = new Map<
+    string,
+    {
+      purchases: number;
+      quantity: number;
+      cost: number;
+    }
+  >();
+
+  for (const purchase of purchases) {
+    totalCost += Number(purchase.totalCost);
+    totalQuantity += Number(purchase.qty);
+
+    const day = purchase.createdAt.toISOString().split("T")[0];
+
+    const bucket = chartMap.get(day) ?? {
+      purchases: 0,
+      quantity: 0,
+      cost: 0,
+    };
+
+    bucket.purchases += 1;
+    bucket.quantity += Number(purchase.qty);
+    bucket.cost += Number(purchase.totalCost);
+
+    chartMap.set(day, bucket);
+  }
+
+  const chart = Array.from(chartMap.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, value]) => ({
+      date,
+      purchases: value.purchases,
+      quantity: Number(value.quantity.toFixed(2)),
+      cost: Number(value.cost.toFixed(2)),
+    }));
+
+  return {
+    range,
+    startDate: start ?? null,
+    endDate: end ?? null,
+    totalPurchases: purchases.length,
+    totalQuantity: Number(totalQuantity.toFixed(2)),
+    totalCost: Number(totalCost.toFixed(2)),
+    chart,
+  };
+};
+const getPurchaseReport = async (
+  accountId: string,
+  range: DateRangePreset,
+  customStart?: string,
+  customEnd?: string,
+) => {
+  const { start, end } = resolveDateRange(range, customStart, customEnd);
+
+  const purchases = await prisma.purchase.findMany({
+    where: {
+      accountId,
+      isDeleted: false,
+      ...createdAtWhere(start, end),
+    },
+    include: {
+      supplier: true,
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+
+  let totalCost = 0;
+  let totalQuantity = 0;
+
+  for (const purchase of purchases) {
+    totalCost += Number(purchase.totalCost);
+    totalQuantity += Number(purchase.qty);
+  }
+
+  return {
+    summary: {
+      totalPurchases: purchases.length,
+      totalQuantity: Number(totalQuantity.toFixed(2)),
+      totalCost: Number(totalCost.toFixed(2)),
+    },
+    purchases: purchases.map((purchase: any) => ({
+      id: purchase.id,
+      supplierId: purchase.supplierId,
+      supplier: purchase.supplier?.name ?? null,
+      companyName: purchase.supplier?.companyName ?? null,
+      quantity: Number(purchase.qty),
+      purchasePrice: Number(purchase.purchasePrice),
+      rate: Number(purchase.rate),
+      totalCost: Number(purchase.totalCost),
+      notes: purchase.notes,
+      createdAt: purchase.createdAt,
+    })),
+  };
+};
 
 export const DashboardService = {
   getSalesOverview,
@@ -480,4 +665,7 @@ export const DashboardService = {
   getCategoryRanking,
   getLowStockAlert,
   getProductRanking,
+  getTopSuppliers,
+  getPurchaseOverview,
+  getPurchaseReport,
 };
