@@ -57,7 +57,15 @@ const getAllSales = async (req: Request, res: Response, next: NextFunction) => {
     const endDate = req.query.endDate as string | undefined;
     const dueOnly = req.query.dueOnly === "true";
 
-    const result = await SaleService.getAllSales(accountId, page, limit, search, startDate, endDate, dueOnly);
+    const result = await SaleService.getAllSales(
+      accountId,
+      page,
+      limit,
+      search,
+      startDate,
+      endDate,
+      dueOnly,
+    );
 
     sendResponse(res, {
       statusCode: httpStatus.OK,

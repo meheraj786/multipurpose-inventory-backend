@@ -16,25 +16,16 @@ import {
   type SaleStockItem,
 } from "./sale.stock.util.js";
 
-const createSale = async (
-  data: CreateSaleInput,
-  accountId: string,
-  userId: string,
-) => {
+const createSale = async (data: CreateSaleInput, accountId: string, userId: string) => {
   if (!accountId) throw new Error("accountId is required");
 
   return await prisma.$transaction(async (tx) => {
     const sale = await tx.sale.create({
       data: {
-        customerId:
-          data.customerId && data.customerId.trim() !== ""
-            ? data.customerId
-            : null,
+        customerId: data.customerId && data.customerId.trim() !== "" ? data.customerId : null,
         customerNumber: data.customerNumber ?? null,
         paymentMethod: data.paymentMethod,
-        payments: data.payments
-          ? JSON.parse(JSON.stringify(data.payments))
-          : null,
+        payments: data.payments ? JSON.parse(JSON.stringify(data.payments)) : null,
         discount: data.discount ?? 0,
         due: data.due ?? 0,
         accountId,
@@ -47,18 +38,14 @@ const createSale = async (
       for (const item of data.saleItems) {
         if (item.itemType === "PREPARED_PRODUCT") {
           if (!item.preparedProductId) {
-            throw new Error(
-              "preparedProductId is required for PREPARED_PRODUCT items",
-            );
+            throw new Error("preparedProductId is required for PREPARED_PRODUCT items");
           }
 
           const preparedProduct = await tx.preparedProduct.findFirst({
             where: { id: item.preparedProductId, accountId, isDeleted: false },
           });
           if (!preparedProduct) {
-            throw new Error(
-              `Prepared product not found: ${item.preparedProductId}`,
-            );
+            throw new Error(`Prepared product not found: ${item.preparedProductId}`);
           }
 
           const unitId = item.unitId ?? preparedProduct.unitId;
@@ -100,9 +87,7 @@ const createSale = async (
             orderBy: { createdAt: "desc" },
           });
 
-          const purchasePrice = latestStock
-            ? Number(latestStock.purchasePrice)
-            : 0;
+          const purchasePrice = latestStock ? Number(latestStock.purchasePrice) : 0;
           const unitId = item.unitId ?? product.unitId;
 
           await tx.saleItem.create({
@@ -134,8 +119,7 @@ const createSale = async (
 
     if (data.saleServices && data.saleServices.length > 0) {
       for (const service of data.saleServices) {
-        const total =
-          service.unitPrice * service.quantity - (service.discount ?? 0);
+        const total = service.unitPrice * service.quantity - (service.discount ?? 0);
         await tx.saleService.create({
           data: {
             saleId: sale.id,
@@ -264,9 +248,7 @@ const updateSale = async (
       }),
       ...(data.paymentMethod && { paymentMethod: data.paymentMethod }),
       ...(data.payments !== undefined && {
-        payments: data.payments
-          ? JSON.parse(JSON.stringify(data.payments))
-          : null,
+        payments: data.payments ? JSON.parse(JSON.stringify(data.payments)) : null,
       }),
       ...(data.discount !== undefined && { discount: data.discount }),
       ...(data.due !== undefined && { due: data.due }),
@@ -284,12 +266,7 @@ const updateSale = async (
   return updated;
 };
 
-const payDue = async (
-  saleId: string,
-  accountId: string,
-  userId: string,
-  data: PayDueInput,
-) => {
+const payDue = async (saleId: string, accountId: string, userId: string, data: PayDueInput) => {
   return await prisma.$transaction(async (tx) => {
     const sale = await tx.sale.findFirst({
       where: { id: saleId, accountId, isDeleted: false },
@@ -302,9 +279,7 @@ const payDue = async (
     if (currentDue <= 0) throw new Error("This sale has no outstanding due");
 
     if (data.amountPaid > currentDue) {
-      throw new Error(
-        `Amount paid (${data.amountPaid}) exceeds outstanding due (${currentDue})`,
-      );
+      throw new Error(`Amount paid (${data.amountPaid}) exceeds outstanding due (${currentDue})`);
     }
 
     const newDue = Number((currentDue - data.amountPaid).toFixed(2));
@@ -315,8 +290,7 @@ const payDue = async (
       data: { due: newDue },
     });
 
-    const billTo =
-      sale.customer?.name ?? sale.customerNumber ?? "Walk-in Customer";
+    const billTo = sale.customer?.name ?? sale.customerNumber ?? "Walk-in Customer";
 
     const invoice = await tx.invoice.create({
       data: {
