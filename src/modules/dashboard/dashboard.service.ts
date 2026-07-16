@@ -4,7 +4,6 @@ import {
   getPreviousPeriod,
   resolveDateRange,
 } from "../../shared/utils/dateRange.js";
-import { Purchase } from "@/generated/prisma/index.js";
 
 // ==================== SHARED CALC HELPERS ====================
 
@@ -642,7 +641,7 @@ const getPurchaseReport = async (
       totalQuantity: Number(totalQuantity.toFixed(2)),
       totalCost: Number(totalCost.toFixed(2)),
     },
-    purchases: purchases.map((purchase: any) => ({
+    purchases: purchases.map((purchase) => ({
       id: purchase.id,
       supplierId: purchase.supplierId,
       supplier: purchase.supplier?.name ?? null,
