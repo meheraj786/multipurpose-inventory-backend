@@ -655,6 +655,50 @@ const getPurchaseReport = async (
     })),
   };
 };
+// ==================== GRANULARITY HELPERS ====================
+
+type Granularity = "day" | "week" | "month";
+
+const getChartGranularity = (
+  range: DateRangePreset,
+  start?: Date,
+  end?: Date,
+): Granularity => {
+  if (range === "year" || range === "all") return "month";
+  if (range === "last3months") return "week";
+  if (start && end) {
+    const days = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
+    if (days > 120) return "month";
+    if (days > 35) return "week";
+  }
+  return "day"; 
+};
+
+const bucketKey = (date: Date, granularity: Granularity): string => {
+  if (granularity === "month") {
+    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+  }
+  if (granularity === "week") {
+    const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+    const isoDay = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() - isoDay + 1);
+    return d.toISOString().split("T")[0] as string;
+  }
+  return date.toISOString().split("T")[0] as string;
+};
+
+const formatBucketLabel = (key: string, granularity: Granularity): string => {
+  if (granularity === "month") {
+    const [y, m] = key.split("-").map(Number);
+    return new Date(Date.UTC(y as number, (m as number) - 1, 1)).toLocaleDateString("en-US", {
+      month: "short",
+      year: "numeric",
+    });
+  }
+  const d = new Date(`${key}T00:00:00Z`);
+  const formatted = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return granularity === "week" ? `Wk of ${formatted}` : formatted;
+};
 
 export const DashboardService = {
   getSalesOverview,
@@ -667,4 +711,7 @@ export const DashboardService = {
   getTopSuppliers,
   getPurchaseOverview,
   getPurchaseReport,
+  getChartGranularity,
+  bucketKey,
+  formatBucketLabel,
 };
