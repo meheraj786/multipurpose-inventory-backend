@@ -659,11 +659,7 @@ const getPurchaseReport = async (
 
 type Granularity = "day" | "week" | "month";
 
-const getChartGranularity = (
-  range: DateRangePreset,
-  start?: Date,
-  end?: Date,
-): Granularity => {
+const getChartGranularity = (range: DateRangePreset, start?: Date, end?: Date): Granularity => {
   if (range === "year" || range === "all") return "month";
   if (range === "last3months") return "week";
   if (start && end) {
@@ -671,7 +667,7 @@ const getChartGranularity = (
     if (days > 120) return "month";
     if (days > 35) return "week";
   }
-  return "day"; 
+  return "day";
 };
 
 const bucketKey = (date: Date, granularity: Granularity): string => {
