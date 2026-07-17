@@ -11,9 +11,7 @@ router.get("/category-ranking", DashboardController.getCategoryRanking);
 router.get("/product-ranking", DashboardController.getProductRanking);
 router.get("/low-stock-alert", DashboardController.getLowStockAlert);
 router.get("/top-suppliers", DashboardController.getTopSuppliers);
-
 router.get("/purchase-overview", DashboardController.getPurchaseOverview);
-
 router.get("/purchase-report", DashboardController.getPurchaseReport);
 
 export const DashboardRoutes: Router = router;

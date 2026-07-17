@@ -182,6 +182,7 @@ const getLowStockAlert = async (req: Request, res: Response, next: NextFunction)
     next(error);
   }
 };
+
 const getTopSuppliers = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const accountId = req.user?.accountId as string;

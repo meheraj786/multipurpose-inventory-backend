@@ -5,7 +5,7 @@ import {
   resolveDateRange,
 } from "../../shared/utils/dateRange.js";
 
-// ==================== SHARED CALC HELPERS ====================
+type Granularity = "day" | "week" | "month";
 
 const calcItemRevenue = (item: { sellPrice: unknown; quantity: unknown; discount: unknown }) =>
   Number(item.sellPrice) * Number(item.quantity) - Number(item.discount ?? 0);
@@ -16,7 +16,49 @@ const calcItemCost = (item: { purchasePrice: unknown; quantity: unknown }) =>
 const createdAtWhere = (start?: Date, end?: Date) =>
   start || end ? { createdAt: { ...(start && { gte: start }), ...(end && { lte: end }) } } : {};
 
-// ==================== 1. SALES / AMOUNT / PROFIT ====================
+const getChartGranularity = (
+  range: DateRangePreset,
+  start?: Date,
+  end?: Date,
+): Granularity => {
+  if (range === "year" || range === "all") return "month";
+  if (range === "last3months") return "week";
+  if (start && end) {
+    const days = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
+    if (days > 120) return "month";
+    if (days > 35) return "week";
+  }
+  return "day";
+};
+
+const bucketKey = (date: Date, granularity: Granularity): string => {
+  if (granularity === "month") {
+    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+  }
+  if (granularity === "week") {
+    const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+    const isoDay = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() - isoDay + 1);
+    return d.toISOString().split("T")[0] as string;
+  }
+  return date.toISOString().split("T")[0] as string;
+};
+
+const formatBucketLabel = (key: string, granularity: Granularity): string => {
+  if (granularity === "month") {
+    const [y, m] = key.split("-").map(Number);
+    return new Date(Date.UTC(y as number, (m as number) - 1, 1)).toLocaleDateString("en-US", {
+      month: "short",
+      year: "numeric",
+    });
+  }
+  const d = new Date(`${key}T00:00:00Z`);
+  const formatted = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return granularity === "week" ? `Wk of ${formatted}` : formatted;
+};
+
+const pctChange = (curr: number, prev: number): number =>
+  prev > 0 ? Number((((curr - prev) / prev) * 100).toFixed(2)) : curr > 0 ? 100 : 0;
 
 const getSalesOverview = async (
   accountId: string,
@@ -25,6 +67,7 @@ const getSalesOverview = async (
   customEnd?: string,
 ) => {
   const { start, end } = resolveDateRange(range, customStart, customEnd);
+  const granularity = getChartGranularity(range, start, end);
 
   const sales = await prisma.sale.findMany({
     where: { accountId, isDeleted: false, ...createdAtWhere(start, end) },
@@ -37,7 +80,7 @@ const getSalesOverview = async (
 
   let totalAmount = 0;
   let totalCost = 0;
-  const dailyMap = new Map<string, { sales: number; amount: number; profit: number }>();
+  const bucketMap = new Map<string, { salesCount: number; amount: number; profit: number }>();
 
   for (const sale of sales) {
     const itemsRevenue = sale.saleItems.reduce((s, i) => s + calcItemRevenue(i), 0);
@@ -54,25 +97,27 @@ const getSalesOverview = async (
     totalAmount += revenue;
     totalCost += cost;
 
-    const dayKey = sale.createdAt.toISOString().split("T")[0] as string;
-    const bucket = dailyMap.get(dayKey) ?? { sales: 0, amount: 0, profit: 0 };
-    bucket.sales += 1;
+    const key = bucketKey(sale.createdAt, granularity);
+    const bucket = bucketMap.get(key) ?? { salesCount: 0, amount: 0, profit: 0 };
+    bucket.salesCount += 1;
     bucket.amount += revenue;
     bucket.profit += revenue - cost;
-    dailyMap.set(dayKey, bucket);
+    bucketMap.set(key, bucket);
   }
 
-  const chart = Array.from(dailyMap.entries())
+  const chart = Array.from(bucketMap.entries())
     .sort(([a], [b]) => (a < b ? -1 : 1))
-    .map(([date, v]) => ({
-      date,
-      sales: v.sales,
+    .map(([key, v]) => ({
+      date: key,
+      label: formatBucketLabel(key, granularity),
+      salesCount: v.salesCount,
       amount: Number(v.amount.toFixed(2)),
       profit: Number(v.profit.toFixed(2)),
     }));
 
   return {
     range,
+    granularity,
     startDate: start ?? null,
     endDate: end ?? null,
     totalSales: sales.length,
@@ -82,25 +127,31 @@ const getSalesOverview = async (
   };
 };
 
-// ==================== 2. REVENUE / CUSTOMERS / GROWTH ====================
+type PeriodMetrics = { revenue: number; salesCount: number; dues: number; customers: number };
 
-const computeRevenueAndCustomers = async (accountId: string, start?: Date, end?: Date) => {
+const computePeriodMetrics = async (
+  accountId: string,
+  start?: Date,
+  end?: Date,
+): Promise<PeriodMetrics> => {
   const sales = await prisma.sale.findMany({
     where: { accountId, isDeleted: false, ...createdAtWhere(start, end) },
     include: { saleItems: true, saleServices: true },
   });
 
   let revenue = 0;
+  let dues = 0;
   const customerSet = new Set<string>();
 
   for (const sale of sales) {
     const itemsRevenue = sale.saleItems.reduce((s, i) => s + calcItemRevenue(i), 0);
     const servicesRevenue = sale.saleServices.reduce((s, sv) => s + Number(sv.total), 0);
     revenue += Math.max(0, itemsRevenue + servicesRevenue - Number(sale.discount ?? 0));
+    dues += Number(sale.due ?? 0);
     customerSet.add(sale.customerId ?? `walkin:${sale.customerNumber ?? sale.id}`);
   }
 
-  return { revenue, customers: customerSet.size };
+  return { revenue, salesCount: sales.length, dues, customers: customerSet.size };
 };
 
 const getOverviewStats = async (
@@ -111,35 +162,36 @@ const getOverviewStats = async (
 ) => {
   const { start, end } = resolveDateRange(range, customStart, customEnd);
 
-  const current = await computeRevenueAndCustomers(accountId, start, end);
+  const current = await computePeriodMetrics(accountId, start, end);
   const totalCustomersAllTime = await prisma.customer.count({
     where: { accountId, isDeleted: false },
   });
 
-  let growthRate: number | null = null;
+  let previous: PeriodMetrics | null = null;
   if (start && end) {
     const { start: prevStart, end: prevEnd } = getPreviousPeriod(start, end);
-    const previous = await computeRevenueAndCustomers(accountId, prevStart, prevEnd);
-    growthRate =
-      previous.revenue > 0
-        ? Number((((current.revenue - previous.revenue) / previous.revenue) * 100).toFixed(2))
-        : current.revenue > 0
-          ? 100
-          : 0;
+    previous = await computePeriodMetrics(accountId, prevStart, prevEnd);
   }
+
+  const currentAov = current.salesCount > 0 ? current.revenue / current.salesCount : 0;
+  const previousAov = previous && previous.salesCount > 0 ? previous.revenue / previous.salesCount : 0;
 
   return {
     range,
     startDate: start ?? null,
     endDate: end ?? null,
     totalRevenue: Number(current.revenue.toFixed(2)),
+    revenueChangePercent: previous ? pctChange(current.revenue, previous.revenue) : null,
+    salesCount: current.salesCount,
+    salesCountChangePercent: previous ? pctChange(current.salesCount, previous.salesCount) : null,
+    outstandingDues: Number(current.dues.toFixed(2)),
+    duesChangePercent: previous ? pctChange(current.dues, previous.dues) : null,
+    avgOrderValue: Number(currentAov.toFixed(2)),
+    avgOrderValueChangePercent: previous ? pctChange(currentAov, previousAov) : null,
     activeCustomers: current.customers,
     totalCustomers: totalCustomersAllTime,
-    growthRate, // null when range === "all" (no comparable previous period)
   };
 };
-
-// ==================== 3. TOP CUSTOMERS ====================
 
 const getTopCustomers = async (
   accountId: string,
@@ -198,8 +250,6 @@ const getTopCustomers = async (
     }));
 };
 
-// ==================== 4. DUE RANKING ====================
-
 const getDueRanking = async (
   accountId: string,
   range: DateRangePreset,
@@ -250,8 +300,6 @@ const getDueRanking = async (
     .slice(0, limit)
     .map((c) => ({ ...c, totalDue: Number(c.totalDue.toFixed(2)) }));
 };
-
-// ==================== 5. CATEGORY / SUB-CATEGORY RANKING ====================
 
 const getCategoryRanking = async (
   accountId: string,
@@ -341,8 +389,6 @@ const getCategoryRanking = async (
   };
 };
 
-// ==================== 6. LOW STOCK ALERT ====================
-
 const getLowStockAlert = async (accountId: string) => {
   const [products, rawProducts] = await Promise.all([
     prisma.product.findMany({
@@ -400,8 +446,6 @@ const getLowStockAlert = async (accountId: string) => {
 
   return { products: lowStockProducts, rawProducts: lowStockRawProducts };
 };
-
-// ==================== 7. PRODUCT / PREPARED PRODUCT RANKING ====================
 
 const getProductRanking = async (
   accountId: string,
@@ -477,6 +521,7 @@ const getProductRanking = async (
       .map((p) => ({ ...p, revenue: Number(p.revenue.toFixed(2)) })),
   };
 };
+
 const getTopSuppliers = async (
   accountId: string,
   range: DateRangePreset,
@@ -536,6 +581,7 @@ const getTopSuppliers = async (
       totalPurchase: Number(item.totalPurchase.toFixed(2)),
     }));
 };
+
 const getPurchaseOverview = async (
   accountId: string,
   range: DateRangePreset,
@@ -558,14 +604,7 @@ const getPurchaseOverview = async (
   let totalCost = 0;
   let totalQuantity = 0;
 
-  const chartMap = new Map<
-    string,
-    {
-      purchases: number;
-      quantity: number;
-      cost: number;
-    }
-  >();
+  const chartMap = new Map<string, { purchases: number; quantity: number; cost: number }>();
 
   for (const purchase of purchases) {
     totalCost += Number(purchase.totalCost);
@@ -605,6 +644,7 @@ const getPurchaseOverview = async (
     chart,
   };
 };
+
 const getPurchaseReport = async (
   accountId: string,
   range: DateRangePreset,
@@ -655,46 +695,6 @@ const getPurchaseReport = async (
     })),
   };
 };
-// ==================== GRANULARITY HELPERS ====================
-
-type Granularity = "day" | "week" | "month";
-
-const getChartGranularity = (range: DateRangePreset, start?: Date, end?: Date): Granularity => {
-  if (range === "year" || range === "all") return "month";
-  if (range === "last3months") return "week";
-  if (start && end) {
-    const days = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
-    if (days > 120) return "month";
-    if (days > 35) return "week";
-  }
-  return "day";
-};
-
-const bucketKey = (date: Date, granularity: Granularity): string => {
-  if (granularity === "month") {
-    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
-  }
-  if (granularity === "week") {
-    const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
-    const isoDay = d.getUTCDay() || 7;
-    d.setUTCDate(d.getUTCDate() - isoDay + 1);
-    return d.toISOString().split("T")[0] as string;
-  }
-  return date.toISOString().split("T")[0] as string;
-};
-
-const formatBucketLabel = (key: string, granularity: Granularity): string => {
-  if (granularity === "month") {
-    const [y, m] = key.split("-").map(Number);
-    return new Date(Date.UTC(y as number, (m as number) - 1, 1)).toLocaleDateString("en-US", {
-      month: "short",
-      year: "numeric",
-    });
-  }
-  const d = new Date(`${key}T00:00:00Z`);
-  const formatted = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  return granularity === "week" ? `Wk of ${formatted}` : formatted;
-};
 
 export const DashboardService = {
   getSalesOverview,
@@ -707,7 +707,4 @@ export const DashboardService = {
   getTopSuppliers,
   getPurchaseOverview,
   getPurchaseReport,
-  getChartGranularity,
-  bucketKey,
-  formatBucketLabel,
 };
