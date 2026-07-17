@@ -16,11 +16,7 @@ const calcItemCost = (item: { purchasePrice: unknown; quantity: unknown }) =>
 const createdAtWhere = (start?: Date, end?: Date) =>
   start || end ? { createdAt: { ...(start && { gte: start }), ...(end && { lte: end }) } } : {};
 
-const getChartGranularity = (
-  range: DateRangePreset,
-  start?: Date,
-  end?: Date,
-): Granularity => {
+const getChartGranularity = (range: DateRangePreset, start?: Date, end?: Date): Granularity => {
   if (range === "year" || range === "all") return "month";
   if (range === "last3months") return "week";
   if (start && end) {
@@ -174,7 +170,8 @@ const getOverviewStats = async (
   }
 
   const currentAov = current.salesCount > 0 ? current.revenue / current.salesCount : 0;
-  const previousAov = previous && previous.salesCount > 0 ? previous.revenue / previous.salesCount : 0;
+  const previousAov =
+    previous && previous.salesCount > 0 ? previous.revenue / previous.salesCount : 0;
 
   return {
     range,
