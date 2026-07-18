@@ -16,7 +16,11 @@ const calcItemCost = (item: { purchasePrice: unknown; quantity: unknown }) =>
 const createdAtWhere = (start?: Date, end?: Date) =>
   start || end ? { createdAt: { ...(start && { gte: start }), ...(end && { lte: end }) } } : {};
 
-const getChartGranularity = (range: DateRangePreset, start?: Date, end?: Date): Granularity => {
+const getChartGranularity = (
+  range: DateRangePreset,
+  start?: Date,
+  end?: Date,
+): Granularity => {
   if (range === "year" || range === "all") return "month";
   if (range === "last3months") return "week";
   if (start && end) {
@@ -76,7 +80,7 @@ const getSalesOverview = async (
 
   let totalAmount = 0;
   let totalCost = 0;
-  const bucketMap = new Map<string, { salesCount: number; amount: number; profit: number }>();
+  const bucketMap = new Map<string, { salesCount: number; amount: number; cost: number; profit: number }>();
 
   for (const sale of sales) {
     const itemsRevenue = sale.saleItems.reduce((s, i) => s + calcItemRevenue(i), 0);
@@ -94,9 +98,10 @@ const getSalesOverview = async (
     totalCost += cost;
 
     const key = bucketKey(sale.createdAt, granularity);
-    const bucket = bucketMap.get(key) ?? { salesCount: 0, amount: 0, profit: 0 };
+    const bucket = bucketMap.get(key) ?? { salesCount: 0, amount: 0, cost: 0, profit: 0 };
     bucket.salesCount += 1;
     bucket.amount += revenue;
+    bucket.cost += cost;
     bucket.profit += revenue - cost;
     bucketMap.set(key, bucket);
   }
@@ -109,7 +114,10 @@ const getSalesOverview = async (
       salesCount: v.salesCount,
       amount: Number(v.amount.toFixed(2)),
       profit: Number(v.profit.toFixed(2)),
+      profitMargin: v.amount > 0 ? Number(((v.profit / v.amount) * 100).toFixed(2)) : 0,
     }));
+
+  const totalProfit = totalAmount - totalCost;
 
   return {
     range,
@@ -118,12 +126,20 @@ const getSalesOverview = async (
     endDate: end ?? null,
     totalSales: sales.length,
     totalAmount: Number(totalAmount.toFixed(2)),
-    totalProfit: Number((totalAmount - totalCost).toFixed(2)),
+    totalCost: Number(totalCost.toFixed(2)),
+    totalProfit: Number(totalProfit.toFixed(2)),
+    profitMargin: totalAmount > 0 ? Number(((totalProfit / totalAmount) * 100).toFixed(2)) : 0,
     chart,
   };
 };
 
-type PeriodMetrics = { revenue: number; salesCount: number; dues: number; customers: number };
+type PeriodMetrics = {
+  revenue: number;
+  cost: number;
+  salesCount: number;
+  dues: number;
+  customers: number;
+};
 
 const computePeriodMetrics = async (
   accountId: string,
@@ -132,22 +148,33 @@ const computePeriodMetrics = async (
 ): Promise<PeriodMetrics> => {
   const sales = await prisma.sale.findMany({
     where: { accountId, isDeleted: false, ...createdAtWhere(start, end) },
-    include: { saleItems: true, saleServices: true },
+    include: {
+      saleItems: true,
+      saleServices: { include: { service: true } },
+    },
   });
 
   let revenue = 0;
+  let cost = 0;
   let dues = 0;
   const customerSet = new Set<string>();
 
   for (const sale of sales) {
     const itemsRevenue = sale.saleItems.reduce((s, i) => s + calcItemRevenue(i), 0);
+    const itemsCost = sale.saleItems.reduce((s, i) => s + calcItemCost(i), 0);
     const servicesRevenue = sale.saleServices.reduce((s, sv) => s + Number(sv.total), 0);
+    const servicesCost = sale.saleServices.reduce(
+      (s, sv) => s + Number(sv.service?.internalCost ?? 0) * sv.quantity,
+      0,
+    );
+
     revenue += Math.max(0, itemsRevenue + servicesRevenue - Number(sale.discount ?? 0));
+    cost += itemsCost + servicesCost;
     dues += Number(sale.due ?? 0);
     customerSet.add(sale.customerId ?? `walkin:${sale.customerNumber ?? sale.id}`);
   }
 
-  return { revenue, salesCount: sales.length, dues, customers: customerSet.size };
+  return { revenue, cost, salesCount: sales.length, dues, customers: customerSet.size };
 };
 
 const getOverviewStats = async (
@@ -170,8 +197,13 @@ const getOverviewStats = async (
   }
 
   const currentAov = current.salesCount > 0 ? current.revenue / current.salesCount : 0;
-  const previousAov =
-    previous && previous.salesCount > 0 ? previous.revenue / previous.salesCount : 0;
+  const previousAov = previous && previous.salesCount > 0 ? previous.revenue / previous.salesCount : 0;
+
+  const currentProfit = current.revenue - current.cost;
+  const previousProfit = previous ? previous.revenue - previous.cost : 0;
+
+  const currentMargin = current.revenue > 0 ? (currentProfit / current.revenue) * 100 : 0;
+  const previousMargin = previous && previous.revenue > 0 ? (previousProfit / previous.revenue) * 100 : 0;
 
   return {
     range,
@@ -185,6 +217,10 @@ const getOverviewStats = async (
     duesChangePercent: previous ? pctChange(current.dues, previous.dues) : null,
     avgOrderValue: Number(currentAov.toFixed(2)),
     avgOrderValueChangePercent: previous ? pctChange(currentAov, previousAov) : null,
+    totalProfit: Number(currentProfit.toFixed(2)),
+    profitChangePercent: previous ? pctChange(currentProfit, previousProfit) : null,
+    profitMargin: Number(currentMargin.toFixed(2)),
+    profitMarginChangePercent: previous ? pctChange(currentMargin, previousMargin) : null,
     activeCustomers: current.customers,
     totalCustomers: totalCustomersAllTime,
   };
