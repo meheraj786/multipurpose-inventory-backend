@@ -200,7 +200,8 @@ const stockIn = async (
       const incomingValue = Number(data.totalCost);
       const existingValue = existingAvgCost * existingQty;
       const combinedQty = existingQty + incomingQty;
-      newAverageCost = combinedQty > 0 ? (existingValue + incomingValue) / combinedQty : existingAvgCost;
+      newAverageCost =
+        combinedQty > 0 ? (existingValue + incomingValue) / combinedQty : existingAvgCost;
     }
 
     const newStock = await tx.rawProductStock.create({
