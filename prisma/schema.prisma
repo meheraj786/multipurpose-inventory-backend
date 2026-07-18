@@ -304,6 +304,7 @@ model RawProduct {
   unitId        String
   unit          Unit         @relation(fields: [unitId], references: [id])
   totalStock    Decimal      @default(0)
+  averageCost   Decimal      @default(0)
   img           String?
   description   String?
   lowStockAlert String?
@@ -397,6 +398,7 @@ model PreparedProductStock {
   preparedProductId String
   preparedProduct   PreparedProduct @relation(fields: [preparedProductId], references: [id])
   quantity          Decimal
+  costPerUnit       Decimal         @default(0)
   isDeleted         Boolean         @default(false)
   batch             String?
   expiryDate        DateTime?

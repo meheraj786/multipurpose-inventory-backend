@@ -191,6 +191,18 @@ const stockIn = async (
   if (!rawProduct) throw new Error("Raw product not found");
 
   const stock = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const existingQty = Number(rawProduct.totalStock);
+    const existingAvgCost = Number(rawProduct.averageCost);
+    const incomingQty = Number(data.quantity);
+
+    let newAverageCost = existingAvgCost;
+    if (data.totalCost !== undefined && data.totalCost !== null && incomingQty > 0) {
+      const incomingValue = Number(data.totalCost);
+      const existingValue = existingAvgCost * existingQty;
+      const combinedQty = existingQty + incomingQty;
+      newAverageCost = combinedQty > 0 ? (existingValue + incomingValue) / combinedQty : existingAvgCost;
+    }
+
     const newStock = await tx.rawProductStock.create({
       data: {
         rawProductId,
@@ -208,9 +220,8 @@ const stockIn = async (
     await tx.rawProduct.update({
       where: { id: rawProductId },
       data: {
-        totalStock: {
-          increment: data.quantity,
-        },
+        totalStock: { increment: data.quantity },
+        averageCost: newAverageCost,
       },
     });
 

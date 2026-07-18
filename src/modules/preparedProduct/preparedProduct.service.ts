@@ -684,38 +684,22 @@ const produceStock = async (
 ) => {
   return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const preparedProduct = await tx.preparedProduct.findFirst({
-      where: {
-        id,
-        accountId,
-        isDeleted: false,
-      },
+      where: { id, accountId, isDeleted: false },
       include: {
-        preparedProductItems: {
-          include: {
-            rawProduct: true,
-          },
-        },
+        preparedProductItems: { include: { rawProduct: true } },
       },
     });
+    if (!preparedProduct) throw new Error("Prepared product not found");
 
-    if (!preparedProduct) {
-      throw new Error("Prepared product not found");
-    }
+    let costPerUnit = 0;
 
     for (const item of preparedProduct.preparedProductItems) {
       const requiredQty = Number(item.quantity) * quantity;
 
       const rawProduct = await tx.rawProduct.findFirst({
-        where: {
-          id: item.rawProductId,
-          accountId,
-          isDeleted: false,
-        },
+        where: { id: item.rawProductId, accountId, isDeleted: false },
       });
-
-      if (!rawProduct) {
-        throw new Error(`Raw product not found: ${item.rawProductId}`);
-      }
+      if (!rawProduct) throw new Error(`Raw product not found: ${item.rawProductId}`);
 
       if (Number(rawProduct.totalStock) < requiredQty) {
         throw new Error(
@@ -723,15 +707,11 @@ const produceStock = async (
         );
       }
 
+      costPerUnit += Number(rawProduct.averageCost) * Number(item.quantity);
+
       await tx.rawProduct.update({
-        where: {
-          id: item.rawProductId,
-        },
-        data: {
-          totalStock: {
-            decrement: requiredQty,
-          },
-        },
+        where: { id: item.rawProductId },
+        data: { totalStock: { decrement: requiredQty } },
       });
 
       const rawStocks = await tx.rawProductStock.findMany({
@@ -739,35 +719,19 @@ const produceStock = async (
           rawProductId: item.rawProductId,
           accountId,
           isDeleted: false,
-          quantity: {
-            gt: 0,
-          },
+          quantity: { gt: 0 },
         },
-        orderBy: {
-          createdAt: "asc",
-        },
+        orderBy: { createdAt: "asc" },
       });
 
       let remaining = requiredQty;
-
       for (const stock of rawStocks) {
-        if (remaining <= 0) {
-          break;
-        }
-
+        if (remaining <= 0) break;
         const deduct = Math.min(remaining, Number(stock.quantity));
-
         await tx.rawProductStock.update({
-          where: {
-            id: stock.id,
-          },
-          data: {
-            quantity: {
-              decrement: deduct,
-            },
-          },
+          where: { id: stock.id },
+          data: { quantity: { decrement: deduct } },
         });
-
         remaining -= deduct;
       }
     }
@@ -777,17 +741,21 @@ const produceStock = async (
         preparedProductId: id,
         accountId,
         quantity,
-        ...(expiryDate && {
-          expiryDate: new Date(expiryDate),
-        }),
+        costPerUnit,
+        ...(expiryDate && { expiryDate: new Date(expiryDate) }),
       },
+    });
+
+    await tx.preparedProduct.update({
+      where: { id },
+      data: { rawMaterialCost: costPerUnit },
     });
 
     await ActivityLogService.createLog({
       userId,
       module: SystemModule.PREPARED_PRODUCT,
       action: SystemAction.STOCK_IN,
-      details: `Produced ${quantity} units of ${preparedProduct.name}`,
+      details: `Produced ${quantity} units of ${preparedProduct.name} at ${costPerUnit.toFixed(2)}/unit`,
       accountId,
     });
 

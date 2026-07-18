@@ -48,8 +48,15 @@ const createSale = async (data: CreateSaleInput, accountId: string, userId: stri
             throw new Error(`Prepared product not found: ${item.preparedProductId}`);
           }
 
+          const latestBatch = await tx.preparedProductStock.findFirst({
+            where: { preparedProductId: item.preparedProductId, accountId, isDeleted: false },
+            orderBy: { createdAt: "desc" },
+          });
+
           const unitId = item.unitId ?? preparedProduct.unitId;
-          const purchasePrice = Number(preparedProduct.rawMaterialCost ?? 0);
+          const purchasePrice = latestBatch
+            ? Number(latestBatch.costPerUnit)
+            : Number(preparedProduct.rawMaterialCost ?? 0);
 
           await tx.saleItem.create({
             data: {

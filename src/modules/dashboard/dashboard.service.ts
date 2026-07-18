@@ -16,11 +16,7 @@ const calcItemCost = (item: { purchasePrice: unknown; quantity: unknown }) =>
 const createdAtWhere = (start?: Date, end?: Date) =>
   start || end ? { createdAt: { ...(start && { gte: start }), ...(end && { lte: end }) } } : {};
 
-const getChartGranularity = (
-  range: DateRangePreset,
-  start?: Date,
-  end?: Date,
-): Granularity => {
+const getChartGranularity = (range: DateRangePreset, start?: Date, end?: Date): Granularity => {
   if (range === "year" || range === "all") return "month";
   if (range === "last3months") return "week";
   if (start && end) {
@@ -80,7 +76,10 @@ const getSalesOverview = async (
 
   let totalAmount = 0;
   let totalCost = 0;
-  const bucketMap = new Map<string, { salesCount: number; amount: number; cost: number; profit: number }>();
+  const bucketMap = new Map<
+    string,
+    { salesCount: number; amount: number; cost: number; profit: number }
+  >();
 
   for (const sale of sales) {
     const itemsRevenue = sale.saleItems.reduce((s, i) => s + calcItemRevenue(i), 0);
@@ -197,13 +196,15 @@ const getOverviewStats = async (
   }
 
   const currentAov = current.salesCount > 0 ? current.revenue / current.salesCount : 0;
-  const previousAov = previous && previous.salesCount > 0 ? previous.revenue / previous.salesCount : 0;
+  const previousAov =
+    previous && previous.salesCount > 0 ? previous.revenue / previous.salesCount : 0;
 
   const currentProfit = current.revenue - current.cost;
   const previousProfit = previous ? previous.revenue - previous.cost : 0;
 
   const currentMargin = current.revenue > 0 ? (currentProfit / current.revenue) * 100 : 0;
-  const previousMargin = previous && previous.revenue > 0 ? (previousProfit / previous.revenue) * 100 : 0;
+  const previousMargin =
+    previous && previous.revenue > 0 ? (previousProfit / previous.revenue) * 100 : 0;
 
   return {
     range,
