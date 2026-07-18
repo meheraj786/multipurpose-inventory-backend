@@ -8,11 +8,7 @@ const askAssistant = async (req: Request, res: Response, next: NextFunction) => 
     const accountId = req.user?.accountId as string;
     const userId = req.user?.userId as string;
 
-    const responseText = await AssistantService.askAssistant(
-      accountId,
-      userId,
-      req.body
-    );
+    const responseText = await AssistantService.askAssistant(accountId, userId, req.body);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,

@@ -13,7 +13,7 @@ const queryGroq = async (messages: Array<{ role: string; content: string }>) => 
   const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${apiKey}`,
+      Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
@@ -44,65 +44,85 @@ const compileBusinessContext = async (accountId: string) => {
 
   // 2. Fetch named, aggregated metrics from your DashboardService
   // We use "thisMonth" as a default baseline for trends, but you can adjust this preset
-  const [
-    stats,
-    lowStockData,
-    productRankings,
-    dueRankings,
-    topCustomers,
-  ] = await Promise.all([
+  const [stats, lowStockData, productRankings, dueRankings, topCustomers] = await Promise.all([
     DashboardService.getOverviewStats(accountId, "month").catch(() => null),
     DashboardService.getLowStockAlert(accountId).catch(() => ({ products: [], rawProducts: [] })),
-    DashboardService.getProductRanking(accountId, "month").catch(() => ({ products: [], preparedProducts: [] })),
+    DashboardService.getProductRanking(accountId, "month").catch(() => ({
+      products: [],
+      preparedProducts: [],
+    })),
     DashboardService.getDueRanking(accountId, "all").catch(() => []),
     DashboardService.getTopCustomers(accountId, "month").catch(() => []),
   ]);
 
   // 3. Format the low stock items safely with real product names
-  const lowStockProductsSummary = lowStockData.products.length > 0
-    ? lowStockData.products
-        .slice(0, 8)
-        .map((p) => `- ${p.name} (SKU: ${p.sku || "N/A"}): Current Stock ${p.currentStock} ${p.unit || ""}, Alert Level: ${p.threshold}`)
-        .join("\n")
-    : "No standard products are currently below their low stock thresholds.";
+  const lowStockProductsSummary =
+    lowStockData.products.length > 0
+      ? lowStockData.products
+          .slice(0, 8)
+          .map(
+            (p) =>
+              `- ${p.name} (SKU: ${p.sku || "N/A"}): Current Stock ${p.currentStock} ${p.unit || ""}, Alert Level: ${p.threshold}`,
+          )
+          .join("\n")
+      : "No standard products are currently below their low stock thresholds.";
 
-  const lowStockRawSummary = lowStockData.rawProducts.length > 0
-    ? lowStockData.rawProducts
-        .slice(0, 8)
-        .map((rp) => `- Raw Material: ${rp.name}: Current Stock ${rp.currentStock} ${rp.unit || ""}, Alert Level: ${rp.threshold}`)
-        .join("\n")
-    : "No raw materials are currently below their thresholds.";
+  const lowStockRawSummary =
+    lowStockData.rawProducts.length > 0
+      ? lowStockData.rawProducts
+          .slice(0, 8)
+          .map(
+            (rp) =>
+              `- Raw Material: ${rp.name}: Current Stock ${rp.currentStock} ${rp.unit || ""}, Alert Level: ${rp.threshold}`,
+          )
+          .join("\n")
+      : "No raw materials are currently below their thresholds.";
 
   // 4. Format top selling products with names
-  const topProductsSummary = productRankings.products.length > 0
-    ? productRankings.products
-        .slice(0, 5)
-        .map((p) => `- ${p.name} (SKU: ${p.sku || "N/A"}): Sold Qty ${p.quantity}, Generated Revenue: ${p.revenue} ${currency}`)
-        .join("\n")
-    : "No product sales records this month.";
+  const topProductsSummary =
+    productRankings.products.length > 0
+      ? productRankings.products
+          .slice(0, 5)
+          .map(
+            (p) =>
+              `- ${p.name} (SKU: ${p.sku || "N/A"}): Sold Qty ${p.quantity}, Generated Revenue: ${p.revenue} ${currency}`,
+          )
+          .join("\n")
+      : "No product sales records this month.";
 
-  const topPreparedSummary = productRankings.preparedProducts.length > 0
-    ? productRankings.preparedProducts
-        .slice(0, 5)
-        .map((p) => `- Prepared Product: ${p.name}: Sold Qty ${p.quantity}, Revenue: ${p.revenue} ${currency}`)
-        .join("\n")
-    : "";
+  const topPreparedSummary =
+    productRankings.preparedProducts.length > 0
+      ? productRankings.preparedProducts
+          .slice(0, 5)
+          .map(
+            (p) =>
+              `- Prepared Product: ${p.name}: Sold Qty ${p.quantity}, Revenue: ${p.revenue} ${currency}`,
+          )
+          .join("\n")
+      : "";
 
   // 5. Format outstanding customer dues with names
-  const outstandingDuesSummary = dueRankings.length > 0
-    ? dueRankings
-        .slice(0, 5)
-        .map((d) => `- ${d.name} (${d.phone || "No phone"}): Total Outstanding Due: ${d.totalDue} ${currency}`)
-        .join("\n")
-    : "No active accounts receivable / unpaid dues.";
+  const outstandingDuesSummary =
+    dueRankings.length > 0
+      ? dueRankings
+          .slice(0, 5)
+          .map(
+            (d) =>
+              `- ${d.name} (${d.phone || "No phone"}): Total Outstanding Due: ${d.totalDue} ${currency}`,
+          )
+          .join("\n")
+      : "No active accounts receivable / unpaid dues.";
 
   // 6. Format top loyal customers
-  const topCustomersSummary = topCustomers.length > 0
-    ? topCustomers
-        .slice(0, 5)
-        .map((c) => `- ${c.name}: ${c.salesCount} purchases, spent ${c.totalPurchase} ${currency}`)
-        .join("\n")
-    : "No client transaction logs yet.";
+  const topCustomersSummary =
+    topCustomers.length > 0
+      ? topCustomers
+          .slice(0, 5)
+          .map(
+            (c) => `- ${c.name}: ${c.salesCount} purchases, spent ${c.totalPurchase} ${currency}`,
+          )
+          .join("\n")
+      : "No client transaction logs yet.";
 
   // 7. Compose highly detailed system rules and live metrics context
   return `
@@ -150,7 +170,7 @@ Use this concrete, structured metadata to answer questions directly. If asked ab
 const askAssistant = async (
   accountId: string,
   userId: string,
-  payload: AskAssistantInput
+  payload: AskAssistantInput,
 ): Promise<string> => {
   const { message, history } = payload;
 

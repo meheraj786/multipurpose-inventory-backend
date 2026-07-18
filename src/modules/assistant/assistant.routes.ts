@@ -11,7 +11,7 @@ router.use(authenticate);
 router.post(
   "/chat",
   validateRequest(AssistantValidation.askAssistantZodSchema),
-  AssistantController.askAssistant
+  AssistantController.askAssistant,
 );
 
 export const AssistantRoutes = router;
