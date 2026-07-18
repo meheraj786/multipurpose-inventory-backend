@@ -27,6 +27,7 @@ import { PurchaseRoutes } from "./modules/purchase/purchase.routes.js";
 import { RawProductRoutes } from "./modules/rawProduct/rawProduct.route.js";
 import { PreparedProductRoutes } from "./modules/preparedProduct/preparedProduct.routes.js";
 import { DashboardRoutes } from "./modules/dashboard/dashboard.routes.js";
+import { AssistantRoutes } from "./modules/assistant/assistant.routes.js";
 
 const app: Express = express();
 
@@ -92,6 +93,7 @@ app.use(
   PreparedProductRoutes,
 );
 app.use("/api/v1/dashboard", authenticate, DashboardRoutes);
+app.use("/api/v1/assistant", authenticate, AssistantRoutes);
 
 // ==================== ERROR HANDLING ====================
 app.use(notFoundHandler);
