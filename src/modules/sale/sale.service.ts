@@ -283,12 +283,7 @@ const getSingleSale = async (id: string, accountId: string) => {
   };
 };
 
-const updateSale = async (
-  id: string,
-  accountId: string,
-  userId: string,
-  data: UpdateSaleInput,
-) => {
+const updateSale = async (id: string, accountId: string, userId: string, data: UpdateSaleInput) => {
   const existing = await prisma.sale.findFirst({
     where: { id, accountId, isDeleted: false },
   });
