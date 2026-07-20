@@ -494,25 +494,17 @@ const getProductRanking = async (
     where: { accountId, isDeleted: false, ...createdAtWhere(start, end) },
     include: {
       saleItems: { include: { product: true, preparedProduct: true } },
+      saleServices: { include: { service: true } },
     },
   });
 
-  type ProductBucket = {
-    productId: string;
-    name: string;
-    sku: string | null;
-    quantity: number;
-    revenue: number;
-  };
-  type PreparedBucket = {
-    preparedProductId: string;
-    name: string;
-    quantity: number;
-    revenue: number;
-  };
+  type ProductBucket = { productId: string; name: string; sku: string | null; quantity: number; revenue: number };
+  type PreparedBucket = { preparedProductId: string; name: string; quantity: number; revenue: number };
+  type ServiceBucket = { serviceId: string; name: string; quantity: number; revenue: number };
 
   const productAgg = new Map<string, ProductBucket>();
   const preparedAgg = new Map<string, PreparedBucket>();
+  const serviceAgg = new Map<string, ServiceBucket>();
 
   for (const sale of sales) {
     for (const item of sale.saleItems) {
@@ -542,6 +534,18 @@ const getProductRanking = async (
         preparedAgg.set(item.preparedProductId, bucket);
       }
     }
+
+    for (const sv of sale.saleServices) {
+      const bucket = serviceAgg.get(sv.serviceId) ?? {
+        serviceId: sv.serviceId,
+        name: sv.service?.name ?? "Unknown Service",
+        quantity: 0,
+        revenue: 0,
+      };
+      bucket.quantity += sv.quantity;
+      bucket.revenue += Number(sv.total);
+      serviceAgg.set(sv.serviceId, bucket);
+    }
   }
 
   return {
@@ -553,6 +557,10 @@ const getProductRanking = async (
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, limit)
       .map((p) => ({ ...p, revenue: Number(p.revenue.toFixed(2)) })),
+    services: Array.from(serviceAgg.values())
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, limit)
+      .map((s) => ({ ...s, revenue: Number(s.revenue.toFixed(2)) })),
   };
 };
 
