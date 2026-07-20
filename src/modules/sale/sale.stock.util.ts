@@ -12,15 +12,13 @@ export type SaleStockItem = {
 const toNumber = (value: number | string | { toString(): string } | null | undefined) =>
   Number(value ?? 0);
 
-/**
- * Deducts stock for a batch of sale items (FIFO across stock lots).
- * Throws if any single item has insufficient stock.
- */
 export const deductSaleItemsStock = async (
   tx: Prisma.TransactionClient,
   items: SaleStockItem[],
   accountId: string,
-) => {
+): Promise<Record<string, number>> => {
+  const costs: Record<string, number> = {};
+
   for (const item of items) {
     const quantity = toNumber(item.quantity);
     if (quantity <= 0) continue;
@@ -28,7 +26,14 @@ export const deductSaleItemsStock = async (
     if (item.itemType === "PREPARED_PRODUCT") {
       if (!item.preparedProductId) continue;
 
+      const _preparedProduct = await tx.preparedProduct.findUnique({
+        where: { id: item.preparedProductId },
+        select: { rawMaterialCost: true },
+      });
+
       let remaining = quantity;
+      let totalCost = 0;
+
       const stocks = await tx.preparedProductStock.findMany({
         where: {
           preparedProductId: item.preparedProductId,
@@ -42,6 +47,7 @@ export const deductSaleItemsStock = async (
       for (const stock of stocks) {
         if (remaining <= 0) break;
         const deduct = Math.min(remaining, Number(stock.quantity));
+        totalCost += deduct * Number(stock.costPerUnit);
         await tx.preparedProductStock.update({
           where: { id: stock.id },
           data: { quantity: { decrement: deduct } },
@@ -52,10 +58,14 @@ export const deductSaleItemsStock = async (
       if (remaining > 0) {
         throw new Error(`Insufficient stock for prepared product: ${item.preparedProductId}`);
       }
+
+      costs[item.preparedProductId] = totalCost / quantity;
     } else {
       if (!item.productId) continue;
 
       let remaining = quantity;
+      let totalCost = 0;
+
       const stocks = await tx.productStock.findMany({
         where: {
           productId: item.productId,
@@ -69,6 +79,7 @@ export const deductSaleItemsStock = async (
       for (const stock of stocks) {
         if (remaining <= 0) break;
         const deduct = Math.min(remaining, Number(stock.quantity));
+        totalCost += deduct * Number(stock.purchasePrice);
         await tx.productStock.update({
           where: { id: stock.id },
           data: { quantity: { decrement: deduct } },
@@ -79,13 +90,14 @@ export const deductSaleItemsStock = async (
       if (remaining > 0) {
         throw new Error(`Insufficient stock for product: ${item.productId}`);
       }
+
+      costs[item.productId] = totalCost / quantity;
     }
   }
+
+  return costs;
 };
 
-/**
- * Re-adds stock for a batch of sale items (used when a sale is deleted/soft-removed).
- */
 export const readdSaleItemsStock = async (
   tx: Prisma.TransactionClient,
   items: SaleStockItem[],
@@ -157,10 +169,6 @@ export const readdSaleItemsStock = async (
   }
 };
 
-/**
- * Checks that enough stock exists to re-deduct for every item, without mutating anything.
- * Used before restoring a trashed sale — throws a descriptive error on the first shortfall.
- */
 export const assertSufficientStock = async (
   tx: Prisma.TransactionClient,
   items: SaleStockItem[],

@@ -40,7 +40,15 @@ const createSale = async (data: CreateSaleInput, accountId: string, userId: stri
     });
 
     if (data.saleItems && data.saleItems.length > 0) {
-      const stockItems: SaleStockItem[] = [];
+      const stockItems: SaleStockItem[] = data.saleItems.map((item) => ({
+        itemType: item.itemType,
+        productId: item.productId,
+        preparedProductId: item.preparedProductId,
+        unitId: item.unitId,
+        quantity: item.quantity,
+      }));
+
+      const stockCosts = await deductSaleItemsStock(tx, stockItems, accountId);
 
       for (const item of data.saleItems) {
         if (item.itemType === "PREPARED_PRODUCT") {
@@ -55,15 +63,9 @@ const createSale = async (data: CreateSaleInput, accountId: string, userId: stri
             throw new Error(`Prepared product not found: ${item.preparedProductId}`);
           }
 
-          const latestBatch = await tx.preparedProductStock.findFirst({
-            where: { preparedProductId: item.preparedProductId, accountId, isDeleted: false },
-            orderBy: { createdAt: "desc" },
-          });
-
           const unitId = item.unitId ?? preparedProduct.unitId;
-          const purchasePrice = latestBatch
-            ? Number(latestBatch.costPerUnit)
-            : Number(preparedProduct.rawMaterialCost ?? 0);
+          const purchasePrice =
+            stockCosts[item.preparedProductId] ?? Number(preparedProduct.rawMaterialCost ?? 0);
 
           await tx.saleItem.create({
             data: {
@@ -79,13 +81,6 @@ const createSale = async (data: CreateSaleInput, accountId: string, userId: stri
               accountId,
             },
           });
-
-          stockItems.push({
-            itemType: "PREPARED_PRODUCT",
-            preparedProductId: item.preparedProductId,
-            unitId,
-            quantity: item.quantity,
-          });
         } else {
           if (!item.productId) {
             throw new Error("productId is required for PRODUCT items");
@@ -96,13 +91,8 @@ const createSale = async (data: CreateSaleInput, accountId: string, userId: stri
           });
           if (!product) throw new Error(`Product not found: ${item.productId}`);
 
-          const latestStock = await tx.productStock.findFirst({
-            where: { productId: item.productId, accountId, isDeleted: false },
-            orderBy: { createdAt: "desc" },
-          });
-
-          const purchasePrice = latestStock ? Number(latestStock.purchasePrice) : 0;
           const unitId = item.unitId ?? product.unitId;
+          const purchasePrice = stockCosts[item.productId] ?? 0;
 
           await tx.saleItem.create({
             data: {
@@ -118,17 +108,8 @@ const createSale = async (data: CreateSaleInput, accountId: string, userId: stri
               accountId,
             },
           });
-
-          stockItems.push({
-            itemType: "PRODUCT",
-            productId: item.productId,
-            unitId,
-            quantity: item.quantity,
-          });
         }
       }
-
-      await deductSaleItemsStock(tx, stockItems, accountId);
     }
 
     if (data.saleServices && data.saleServices.length > 0) {
