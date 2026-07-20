@@ -1,9 +1,4 @@
-import {
-  type Prisma,
-  type Sale,
-  SystemAction,
-  SystemModule,
-} from "../../generated/prisma/index.js";
+import { type Prisma, SystemAction, SystemModule } from "../../generated/prisma/index.js";
 import prisma from "../../shared/utils/prisma.js";
 import { ActivityLogService } from "../activityLog/activityLog.service.js";
 import { TrashService } from "../trash/trash.service.js";
@@ -15,6 +10,18 @@ import {
   readdSaleItemsStock,
   type SaleStockItem,
 } from "./sale.stock.util.js";
+
+const getItemProfit = (item: {
+  quantity: number;
+  sellPrice: number;
+  purchasePrice: number;
+  discount?: number | null;
+}) => {
+  const revenue = Number(item.sellPrice) * Number(item.quantity);
+  const cost = Number(item.purchasePrice) * Number(item.quantity);
+  const itemDiscount = Number(item.discount ?? 0);
+  return revenue - cost - itemDiscount;
+};
 
 const createSale = async (data: CreateSaleInput, accountId: string, userId: string) => {
   if (!accountId) throw new Error("accountId is required");
@@ -214,8 +221,30 @@ const getAllSales = async (
     prisma.sale.count({ where }),
   ]);
 
+  const dataWithProfit = data.map((sale) => {
+    const itemsWithProfit = sale.saleItems.map((item) => ({
+      ...item,
+      profit: getItemProfit({
+        quantity: Number(item.quantity),
+        sellPrice: Number(item.sellPrice),
+        purchasePrice: Number(item.purchasePrice),
+        discount: item.discount ? Number(item.discount) : null,
+      }),
+    }));
+
+    const itemTotalProfit = itemsWithProfit.reduce((sum, i) => sum + i.profit, 0);
+    const saleDiscount = Number(sale.discount ?? 0);
+    const totalProfit = itemTotalProfit - saleDiscount;
+
+    return {
+      ...sale,
+      saleItems: itemsWithProfit,
+      profit: totalProfit,
+    };
+  });
+
   return {
-    data,
+    data: dataWithProfit,
     meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
   };
 };
@@ -232,7 +261,26 @@ const getSingleSale = async (id: string, accountId: string) => {
   });
 
   if (!sale) throw new Error("Sale not found");
-  return sale;
+
+  const itemsWithProfit = sale.saleItems.map((item) => ({
+    ...item,
+    profit: getItemProfit({
+      quantity: Number(item.quantity),
+      sellPrice: Number(item.sellPrice),
+      purchasePrice: Number(item.purchasePrice),
+      discount: item.discount ? Number(item.discount) : null,
+    }),
+  }));
+
+  const itemTotalProfit = itemsWithProfit.reduce((sum, i) => sum + i.profit, 0);
+  const saleDiscount = Number(sale.discount ?? 0);
+  const totalProfit = itemTotalProfit - saleDiscount;
+
+  return {
+    ...sale,
+    saleItems: itemsWithProfit,
+    profit: totalProfit,
+  };
 };
 
 const updateSale = async (
@@ -240,7 +288,7 @@ const updateSale = async (
   accountId: string,
   userId: string,
   data: UpdateSaleInput,
-): Promise<Sale> => {
+) => {
   const existing = await prisma.sale.findFirst({
     where: { id, accountId, isDeleted: false },
   });
@@ -373,7 +421,6 @@ const restoreSale = async (id: string, accountId: string, userId: string) => {
 
     const stockItems = sale.saleItems as SaleStockItem[];
 
-    // Verify there's enough stock for every item before touching anything.
     await assertSufficientStock(tx, stockItems, accountId);
     await deductSaleItemsStock(tx, stockItems, accountId);
 
