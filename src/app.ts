@@ -28,6 +28,7 @@ import { RawProductRoutes } from "./modules/rawProduct/rawProduct.route.js";
 import { PreparedProductRoutes } from "./modules/preparedProduct/preparedProduct.routes.js";
 import { DashboardRoutes } from "./modules/dashboard/dashboard.routes.js";
 import { AssistantRoutes } from "./modules/assistant/assistant.routes.js";
+import { AccountRoutes } from "./modules/account/account.routes.js";
 
 const app: Express = express();
 
@@ -94,6 +95,7 @@ app.use(
 );
 app.use("/api/v1/dashboard", authenticate, DashboardRoutes);
 app.use("/api/v1/assistant", authenticate, AssistantRoutes);
+app.use("/api/v1/account", authenticate, checkPermission("ACCOUNT"), AccountRoutes);
 
 // ==================== ERROR HANDLING ====================
 app.use(notFoundHandler);
