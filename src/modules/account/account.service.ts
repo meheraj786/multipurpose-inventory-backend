@@ -1,12 +1,14 @@
-import { type Prisma, type Account, SystemAction, SystemModule } from "../../generated/prisma/index.js";
+import {
+  type Prisma,
+  type Account,
+  SystemAction,
+  SystemModule,
+} from "../../generated/prisma/index.js";
 import prisma from "../../shared/utils/prisma.js";
 import { ActivityLogService } from "../activityLog/activityLog.service.js";
-import { CreateAccountInput, UpdateAccountInput } from "./account.validation.js";
+import type { CreateAccountInput, UpdateAccountInput } from "./account.validation.js";
 
-const createAccount = async (
-  data: CreateAccountInput,
-  userId: string,
-): Promise<Account> => {
+const createAccount = async (data: CreateAccountInput, userId: string): Promise<Account> => {
   const account = await prisma.account.create({
     data: {
       ...data,
@@ -114,11 +116,7 @@ const deleteAccount = async (id: string, userId: string): Promise<Account> => {
   return result;
 };
 
-const getAllAccounts = async (
-  page = 1,
-  limit = 10,
-  search?: string,
-) => {
+const getAllAccounts = async (page = 1, limit = 10, search?: string) => {
   const skip = (page - 1) * limit;
 
   const where: Prisma.AccountWhereInput = {

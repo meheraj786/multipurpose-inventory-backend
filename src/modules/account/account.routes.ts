@@ -9,11 +9,7 @@ const router = Router();
 
 router.use(authenticate);
 
-router.get(
-  "/me",
-  checkPermission("ACCOUNT"),
-  AccountController.getMyAccountDetails,
-);
+router.get("/me", checkPermission("ACCOUNT"), AccountController.getMyAccountDetails);
 
 router.patch(
   "/me",
@@ -29,17 +25,9 @@ router.post(
   AccountController.createAccount,
 );
 
-router.get(
-  "/",
-  checkPermission("ACCOUNT"),
-  AccountController.getAllAccounts,
-);
+router.get("/", checkPermission("ACCOUNT"), AccountController.getAllAccounts);
 
-router.get(
-  "/:id",
-  checkPermission("ACCOUNT"),
-  AccountController.getSingleAccount,
-);
+router.get("/:id", checkPermission("ACCOUNT"), AccountController.getSingleAccount);
 
 router.patch(
   "/:id",
@@ -48,10 +36,6 @@ router.patch(
   AccountController.updateSingleAccount,
 );
 
-router.delete(
-  "/:id",
-  checkPermission("ACCOUNT"),
-  AccountController.deleteAccount,
-);
+router.delete("/:id", checkPermission("ACCOUNT"), AccountController.deleteAccount);
 
 export const AccountRoutes: Router = router;
