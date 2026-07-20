@@ -498,8 +498,19 @@ const getProductRanking = async (
     },
   });
 
-  type ProductBucket = { productId: string; name: string; sku: string | null; quantity: number; revenue: number };
-  type PreparedBucket = { preparedProductId: string; name: string; quantity: number; revenue: number };
+  type ProductBucket = {
+    productId: string;
+    name: string;
+    sku: string | null;
+    quantity: number;
+    revenue: number;
+  };
+  type PreparedBucket = {
+    preparedProductId: string;
+    name: string;
+    quantity: number;
+    revenue: number;
+  };
   type ServiceBucket = { serviceId: string; name: string; quantity: number; revenue: number };
 
   const productAgg = new Map<string, ProductBucket>();
