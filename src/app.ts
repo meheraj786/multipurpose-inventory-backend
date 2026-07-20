@@ -95,7 +95,7 @@ app.use(
 );
 app.use("/api/v1/dashboard", authenticate, DashboardRoutes);
 app.use("/api/v1/assistant", authenticate, AssistantRoutes);
-app.use("/api/v1/account", authenticate, checkPermission("ACCOUNT"), AccountRoutes);
+app.use("/api/v1/accounts", authenticate, checkPermission("ACCOUNT"), AccountRoutes);
 
 // ==================== ERROR HANDLING ====================
 app.use(notFoundHandler);
