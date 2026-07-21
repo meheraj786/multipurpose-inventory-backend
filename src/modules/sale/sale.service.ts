@@ -23,6 +23,17 @@ const getItemProfit = (item: {
   return revenue - cost - itemDiscount;
 };
 
+const getServiceProfit = (sv: {
+  quantity: number;
+  total: number | Prisma.Decimal;
+  service: { internalCost: number | Prisma.Decimal | null } | null;
+}) => {
+  const revenue = Number(sv.total);
+  const internalCost = Number(sv.service?.internalCost ?? 0);
+  const totalCost = internalCost * Number(sv.quantity);
+  return revenue - totalCost;
+};
+
 const createSale = async (data: CreateSaleInput, accountId: string, userId: string) => {
   if (!accountId) throw new Error("accountId is required");
 
@@ -213,13 +224,20 @@ const getAllSales = async (
       }),
     }));
 
+    const servicesWithProfit = sale.saleServices.map((sv) => ({
+      ...sv,
+      profit: getServiceProfit(sv),
+    }));
+
     const itemTotalProfit = itemsWithProfit.reduce((sum, i) => sum + i.profit, 0);
+    const serviceTotalProfit = servicesWithProfit.reduce((sum, s) => sum + s.profit, 0);
     const saleDiscount = Number(sale.discount ?? 0);
-    const totalProfit = itemTotalProfit - saleDiscount;
+    const totalProfit = itemTotalProfit + serviceTotalProfit - saleDiscount;
 
     return {
       ...sale,
       saleItems: itemsWithProfit,
+      saleServices: servicesWithProfit,
       profit: totalProfit,
     };
   });
@@ -253,13 +271,20 @@ const getSingleSale = async (id: string, accountId: string) => {
     }),
   }));
 
+  const servicesWithProfit = sale.saleServices.map((sv) => ({
+    ...sv,
+    profit: getServiceProfit(sv),
+  }));
+
   const itemTotalProfit = itemsWithProfit.reduce((sum, i) => sum + i.profit, 0);
+  const serviceTotalProfit = servicesWithProfit.reduce((sum, s) => sum + s.profit, 0);
   const saleDiscount = Number(sale.discount ?? 0);
-  const totalProfit = itemTotalProfit - saleDiscount;
+  const totalProfit = itemTotalProfit + serviceTotalProfit - saleDiscount;
 
   return {
     ...sale,
     saleItems: itemsWithProfit,
+    saleServices: servicesWithProfit,
     profit: totalProfit,
   };
 };
