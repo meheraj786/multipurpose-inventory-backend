@@ -18,7 +18,35 @@ router.post(
 
 router.get("/", checkPermission("PURCHASE"), PurchaseController.getAllPurchases);
 
+router.get("/dues/summary", checkPermission("PURCHASE"), PurchaseController.getDueSummary);
+
+router.get(
+  "/dues/suppliers",
+  checkPermission("PURCHASE"),
+  PurchaseController.getSupplierDueSummary,
+);
+
+router.get(
+  "/dues/suppliers/:supplierId",
+  checkPermission("PURCHASE"),
+  validateRequest(PurchaseValidation.getSupplierLedgerZodSchema),
+  PurchaseController.getSupplierPurchaseLedger,
+);
+
 router.get("/:id", checkPermission("PURCHASE"), PurchaseController.getSinglePurchase);
+
+router.get(
+  "/:id/payments",
+  checkPermission("PURCHASE"),
+  PurchaseController.getPurchasePayments,
+);
+
+router.post(
+  "/:id/payments",
+  checkPermission("PURCHASE"),
+  validateRequest(PurchaseValidation.recordPurchasePaymentZodSchema),
+  PurchaseController.recordPayment,
+);
 
 router.patch(
   "/:id",
@@ -26,6 +54,8 @@ router.patch(
   validateRequest(PurchaseValidation.updatePurchaseZodSchema),
   PurchaseController.updatePurchase,
 );
+
+router.patch("/:id/restore", checkPermission("PURCHASE"), PurchaseController.restorePurchase);
 
 router.delete("/:id", checkPermission("PURCHASE"), PurchaseController.deletePurchase);
 

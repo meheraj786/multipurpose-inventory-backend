@@ -1,3 +1,4 @@
+import { PaymentMethod, PurchasePaymentStatus } from "../../generated/prisma/index.js";
 import { z } from "zod";
 
 export const createPurchaseItemSchema = z.object({
@@ -33,6 +34,25 @@ export const getPurchasesZodSchema = z.object({
     page: z.string().optional(),
     limit: z.string().optional(),
     search: z.string().optional(),
+    paymentStatus: z.nativeEnum(PurchasePaymentStatus).optional(),
+  }),
+});
+
+export const recordPurchasePaymentZodSchema = z.object({
+  body: z.object({
+    amount: z.coerce.number().positive("Amount must be greater than 0"),
+    method: z.nativeEnum(PaymentMethod).optional(),
+    note: z.string().nullable().optional(),
+    paidAt: z.coerce.date().optional(),
+  }),
+});
+
+export const getSupplierLedgerZodSchema = z.object({
+  query: z.object({
+    onlyUnpaid: z
+      .string()
+      .optional()
+      .transform((v) => v === "true"),
   }),
 });
 
@@ -40,7 +60,10 @@ export const PurchaseValidation = {
   createPurchaseZodSchema,
   updatePurchaseZodSchema,
   getPurchasesZodSchema,
+  recordPurchasePaymentZodSchema,
+  getSupplierLedgerZodSchema,
 };
 
 export type CreatePurchaseInput = z.infer<typeof createPurchaseZodSchema>["body"];
 export type UpdatePurchaseInput = z.infer<typeof updatePurchaseZodSchema>["body"];
+export type RecordPurchasePaymentInput = z.infer<typeof recordPurchasePaymentZodSchema>["body"];

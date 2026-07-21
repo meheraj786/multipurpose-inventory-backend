@@ -2,6 +2,9 @@ import {
   type Prisma,
   type ProductStock,
   type Purchase,
+  type PurchasePayment,
+  PaymentMethod,
+  PurchasePaymentStatus,
   SystemAction,
   SystemModule,
 } from "../../generated/prisma/index.js";
@@ -9,6 +12,18 @@ import prisma from "../../shared/utils/prisma.js";
 import { ActivityLogService } from "../activityLog/activityLog.service.js";
 import { TrashService } from "../trash/trash.service.js";
 import type { CreatePurchaseInput, UpdatePurchaseInput } from "./purchase.validation.js";
+
+type RecordPaymentInput = {
+  amount: number;
+  method?: PaymentMethod;
+  note?: string | null;
+  paidAt?: Date;
+};
+
+const resolveStatus = (due: number): PurchasePaymentStatus => {
+  if (due <= 0) return PurchasePaymentStatus.PAID;
+  return PurchasePaymentStatus.PARTIALLY_PAID;
+};
 
 const createPurchases = async (data: CreatePurchaseInput, accountId: string, userId: string) => {
   if (!accountId) throw new Error("accountId is required");
@@ -30,6 +45,9 @@ const createPurchases = async (data: CreatePurchaseInput, accountId: string, use
           purchasePrice: item.purchasePrice,
           rate: item.rate ?? 0,
           totalCost,
+          paidAmount: 0,
+          due: totalCost,
+          paymentStatus: PurchasePaymentStatus.UNPAID,
           supplierId: data.supplierId ?? null,
           notes: item.notes ?? data.notes ?? null,
           accountId,
@@ -71,12 +89,19 @@ const createPurchases = async (data: CreatePurchaseInput, accountId: string, use
   });
 };
 
-const getAllPurchases = async (accountId: string, page = 1, limit = 10, search?: string) => {
+const getAllPurchases = async (
+  accountId: string,
+  page = 1,
+  limit = 10,
+  search?: string,
+  paymentStatus?: PurchasePaymentStatus,
+) => {
   const skip = (page - 1) * limit;
 
   const where: Prisma.PurchaseWhereInput = {
     accountId,
     isDeleted: false,
+    ...(paymentStatus && { paymentStatus }),
     ...(search && {
       OR: [
         { notes: { contains: search, mode: "insensitive" } },
@@ -94,6 +119,7 @@ const getAllPurchases = async (accountId: string, page = 1, limit = 10, search?:
       include: {
         productStocks: { include: { product: true } },
         supplier: true,
+        payments: { orderBy: { paidAt: "desc" } },
       },
     }),
     prisma.purchase.count({ where }),
@@ -108,7 +134,11 @@ const getAllPurchases = async (accountId: string, page = 1, limit = 10, search?:
 const getSinglePurchase = async (id: string, accountId: string) => {
   const purchase = await prisma.purchase.findFirst({
     where: { id, accountId, isDeleted: false },
-    include: { productStocks: { include: { product: true } }, supplier: true },
+    include: {
+      productStocks: { include: { product: true } },
+      supplier: true,
+      payments: { orderBy: { paidAt: "desc" } },
+    },
   });
   if (!purchase) throw new Error("Purchase not found");
   return purchase;
@@ -132,6 +162,15 @@ const updatePurchase = async (
     let supplierId = data.supplierId === undefined ? purchase.supplierId : data.supplierId;
     if (supplierId === "") supplierId = null;
 
+    const paidAmount = Number(purchase.paidAmount);
+    if (paidAmount > totalCost) {
+      throw new Error(
+        `Cannot reduce total cost below the amount already paid (${paidAmount}). ` +
+          `Refund or adjust payments first.`,
+      );
+    }
+    const due = totalCost - paidAmount;
+
     const result = await tx.purchase.update({
       where: { id },
       data: {
@@ -139,6 +178,8 @@ const updatePurchase = async (
         purchasePrice: updatedPrice,
         rate: data.rate ?? purchase.rate,
         totalCost,
+        due,
+        paymentStatus: resolveStatus(due),
         supplierId,
         notes: data.notes === undefined ? purchase.notes : data.notes,
       },
@@ -175,8 +216,13 @@ const deletePurchase = async (id: string, accountId: string, userId: string) => 
     });
     if (!purchase) throw new Error("Purchase not found");
 
-    // Guard: prevent deletion if any stock from this purchase has already
-    // been (partially) sold — sold stock quantity will be less than original
+    if (Number(purchase.paidAmount) > 0) {
+      throw new Error(
+        `Cannot delete purchase — ${Number(purchase.paidAmount)} has already been paid ` +
+          `toward this purchase. Reverse the payments first.`,
+      );
+    }
+
     for (const stock of purchase.productStocks) {
       if (stock.isDeleted) continue;
       const original = Number(purchase.qty);
@@ -194,13 +240,11 @@ const deletePurchase = async (id: string, accountId: string, userId: string) => 
       }
     }
 
-    // Soft-delete all ProductStock entries linked to this purchase
     await tx.productStock.updateMany({
       where: { purchaseId: id, accountId },
       data: { isDeleted: true },
     });
 
-    // Soft-delete the purchase itself
     const result = await tx.purchase.update({
       where: { id },
       data: { isDeleted: true },
@@ -234,13 +278,11 @@ const restorePurchase = async (id: string, accountId: string, userId: string) =>
     });
     if (!purchase) throw new Error("Purchase not found in trash");
 
-    // Restore all linked stock entries
     await tx.productStock.updateMany({
       where: { purchaseId: id, accountId },
       data: { isDeleted: false },
     });
 
-    // Restore the purchase
     const result = await tx.purchase.update({
       where: { id },
       data: { isDeleted: false },
@@ -258,6 +300,142 @@ const restorePurchase = async (id: string, accountId: string, userId: string) =>
   });
 };
 
+const recordPayment = async (
+  purchaseId: string,
+  accountId: string,
+  userId: string,
+  input: RecordPaymentInput,
+) => {
+  if (input.amount <= 0) throw new Error("Payment amount must be greater than 0");
+
+  return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const purchase = await tx.purchase.findFirst({
+      where: { id: purchaseId, accountId, isDeleted: false },
+    });
+    if (!purchase) throw new Error("Purchase not found");
+
+    const currentDue = Number(purchase.due);
+    if (input.amount > currentDue) {
+      throw new Error(
+        `Payment (${input.amount}) exceeds remaining due (${currentDue}) for this purchase`,
+      );
+    }
+
+    const newPaid = Number(purchase.paidAmount) + input.amount;
+    const newDue = currentDue - input.amount;
+
+    const updatedPurchase = await tx.purchase.update({
+      where: { id: purchaseId },
+      data: {
+        paidAmount: newPaid,
+        due: newDue,
+        paymentStatus: resolveStatus(newDue),
+      },
+    });
+
+    const payment = await tx.purchasePayment.create({
+      data: {
+        purchaseId,
+        amount: input.amount,
+        method: input.method ?? PaymentMethod.CASH,
+        note: input.note ?? null,
+        paidAt: input.paidAt ?? new Date(),
+        accountId,
+      },
+    });
+
+    await ActivityLogService.createLog({
+      userId,
+      module: SystemModule.PURCHASE,
+      action: SystemAction.UPDATE,
+      details: `Recorded payment of ${input.amount} for purchase ${purchaseId} (remaining due: ${newDue})`,
+      accountId,
+    });
+
+    return { purchase: updatedPurchase, payment };
+  });
+};
+
+const getPurchasePayments = async (
+  purchaseId: string,
+  accountId: string,
+): Promise<PurchasePayment[]> => {
+  const purchase = await prisma.purchase.findFirst({
+    where: { id: purchaseId, accountId, isDeleted: false },
+  });
+  if (!purchase) throw new Error("Purchase not found");
+
+  return prisma.purchasePayment.findMany({
+    where: { purchaseId, accountId },
+    orderBy: { paidAt: "desc" },
+  });
+};
+
+const getDueSummary = async (accountId: string) => {
+  const [totals, unpaidCount] = await Promise.all([
+    prisma.purchase.aggregate({
+      where: { accountId, isDeleted: false },
+      _sum: { totalCost: true, paidAmount: true, due: true },
+    }),
+    prisma.purchase.count({
+      where: { accountId, isDeleted: false, due: { gt: 0 } },
+    }),
+  ]);
+
+  return {
+    totalPurchased: totals._sum.totalCost ?? 0,
+    totalPaid: totals._sum.paidAmount ?? 0,
+    totalDue: totals._sum.due ?? 0,
+    unpaidPurchaseCount: unpaidCount,
+  };
+};
+
+const getSupplierDueSummary = async (accountId: string) => {
+  const grouped = await prisma.purchase.groupBy({
+    by: ["supplierId"],
+    where: { accountId, isDeleted: false, due: { gt: 0 }, supplierId: { not: null } },
+    _sum: { due: true, totalCost: true, paidAmount: true },
+    _count: { _all: true },
+  });
+
+  const supplierIds = grouped.map((g) => g.supplierId).filter((id): id is string => !!id);
+
+  const suppliers = await prisma.supplier.findMany({
+    where: { id: { in: supplierIds } },
+    select: { id: true, name: true, contact: true, email: true },
+  });
+
+  return grouped
+    .map((g) => ({
+      supplier: suppliers.find((s) => s.id === g.supplierId) ?? null,
+      totalDue: g._sum.due ?? 0,
+      totalPurchased: g._sum.totalCost ?? 0,
+      totalPaid: g._sum.paidAmount ?? 0,
+      unpaidPurchaseCount: g._count._all,
+    }))
+    .sort((a, b) => Number(b.totalDue) - Number(a.totalDue));
+};
+
+const getSupplierPurchaseLedger = async (
+  supplierId: string,
+  accountId: string,
+  onlyUnpaid = false,
+) => {
+  return prisma.purchase.findMany({
+    where: {
+      accountId,
+      supplierId,
+      isDeleted: false,
+      ...(onlyUnpaid && { due: { gt: 0 } }),
+    },
+    orderBy: { createdAt: "desc" },
+    include: {
+      productStocks: { include: { product: true } },
+      payments: { orderBy: { paidAt: "desc" } },
+    },
+  });
+};
+
 export const PurchaseService = {
   createPurchases,
   getAllPurchases,
@@ -265,4 +443,9 @@ export const PurchaseService = {
   updatePurchase,
   deletePurchase,
   restorePurchase,
+  recordPayment,
+  getPurchasePayments,
+  getDueSummary,
+  getSupplierDueSummary,
+  getSupplierPurchaseLedger,
 };

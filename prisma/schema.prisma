@@ -71,6 +71,8 @@ model Account {
   subscriptionHistories SubscriptionHistory[]
   notifications         Notification[]
   saleItems             SaleItem[]
+  purchasePayment       PurchasePayment[]
+
 
   @@index([pricingPlanId])
   @@index([status])
@@ -433,10 +435,32 @@ model Purchase {
 
   productStocks    ProductStock[]
   rawProductStocks RawProductStock[]
+  paidAmount       Decimal               @default(0)
+  due              Decimal               @default(0)
+  paymentStatus    PurchasePaymentStatus @default(UNPAID)
 
+  payments PurchasePayment[]
+
+  @@index([paymentStatus])
   @@index([accountId])
   @@index([supplierId])
   @@index([createdAt])
+}
+
+model PurchasePayment {
+  id         String        @id @default(uuid())
+  purchaseId String
+  purchase   Purchase      @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  amount     Decimal
+  method     PaymentMethod @default(CASH)
+  note       String?
+  accountId  String
+  account    Account       @relation(fields: [accountId], references: [id])
+  paidAt     DateTime      @default(now())
+  createdAt  DateTime      @default(now())
+
+  @@index([purchaseId])
+  @@index([accountId])
 }
 
 // ==================== SERVICE ====================
@@ -772,4 +796,10 @@ enum InvoiceStatus {
 enum SaleItemType {
   PRODUCT
   PREPARED_PRODUCT
+}
+
+enum PurchasePaymentStatus {
+  UNPAID
+  PARTIALLY_PAID
+  PAID
 }
