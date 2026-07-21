@@ -35,11 +35,7 @@ router.get(
 
 router.get("/:id", checkPermission("PURCHASE"), PurchaseController.getSinglePurchase);
 
-router.get(
-  "/:id/payments",
-  checkPermission("PURCHASE"),
-  PurchaseController.getPurchasePayments,
-);
+router.get("/:id/payments", checkPermission("PURCHASE"), PurchaseController.getPurchasePayments);
 
 router.post(
   "/:id/payments",
