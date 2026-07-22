@@ -208,6 +208,7 @@ const getAllSales = async (
         saleItems: { include: { product: true, preparedProduct: true } },
         saleServices: { include: { service: true } },
         invoices: true,
+        returns: { include: { product: true, preparedProduct: true } },
       },
     }),
     prisma.sale.count({ where }),
@@ -256,6 +257,7 @@ const getSingleSale = async (id: string, accountId: string) => {
       saleItems: { include: { product: true, preparedProduct: true } },
       saleServices: { include: { service: true } },
       invoices: true,
+      returns: { include: { product: true, preparedProduct: true } },
     },
   });
 

@@ -29,6 +29,7 @@ import { PreparedProductRoutes } from "./modules/preparedProduct/preparedProduct
 import { DashboardRoutes } from "./modules/dashboard/dashboard.routes.js";
 import { AssistantRoutes } from "./modules/assistant/assistant.routes.js";
 import { AccountRoutes } from "./modules/account/account.routes.js";
+import { WastageRoutes } from "./modules/wastage/wastage.routes.js";
 
 const app: Express = express();
 
@@ -96,6 +97,7 @@ app.use(
 app.use("/api/v1/dashboard", authenticate, DashboardRoutes);
 app.use("/api/v1/assistant", authenticate, AssistantRoutes);
 app.use("/api/v1/accounts", authenticate, checkPermission("ACCOUNT"), AccountRoutes);
+app.use("/api/v1/wastages", authenticate, checkPermission("WASTAGE"), WastageRoutes);
 
 // ==================== ERROR HANDLING ====================
 app.use(notFoundHandler);
