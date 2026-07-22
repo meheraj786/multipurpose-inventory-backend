@@ -95,6 +95,9 @@ const getAllPurchases = async (
   limit = 10,
   search?: string,
   paymentStatus?: PurchasePaymentStatus,
+  dueOnly?: boolean,
+  startDate?: string,
+  endDate?: string,
 ) => {
   const skip = (page - 1) * limit;
 
@@ -102,6 +105,13 @@ const getAllPurchases = async (
     accountId,
     isDeleted: false,
     ...(paymentStatus && { paymentStatus }),
+    ...(dueOnly && { due: { gt: 0 } }),
+    ...((startDate || endDate) && {
+      createdAt: {
+        ...(startDate && { gte: new Date(startDate) }),
+        ...(endDate && { lte: new Date(endDate) }),
+      },
+    }),
     ...(search && {
       OR: [
         { notes: { contains: search, mode: "insensitive" } },

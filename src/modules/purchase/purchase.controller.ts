@@ -35,6 +35,9 @@ const getAllPurchases = async (req: Request, res: Response, next: NextFunction) 
     const limit = parseInt(req.query.limit as string, 10) || 10;
     const search = req.query.search as string | undefined;
     const paymentStatus = req.query.paymentStatus as PurchasePaymentStatus | undefined;
+    const dueOnly = req.query.dueOnly === "true";
+    const startDate = req.query.startDate as string | undefined;
+    const endDate = req.query.endDate as string | undefined;
 
     const result = await PurchaseService.getAllPurchases(
       accountId,
@@ -42,6 +45,9 @@ const getAllPurchases = async (req: Request, res: Response, next: NextFunction) 
       limit,
       search,
       paymentStatus,
+      dueOnly,
+      startDate,
+      endDate,
     );
 
     sendResponse(res, {

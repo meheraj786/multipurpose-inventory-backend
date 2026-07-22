@@ -35,6 +35,12 @@ export const getPurchasesZodSchema = z.object({
     limit: z.string().optional(),
     search: z.string().optional(),
     paymentStatus: z.nativeEnum(PurchasePaymentStatus).optional(),
+    dueOnly: z
+      .string()
+      .optional()
+      .transform((v) => v === "true"),
+    startDate: z.string().optional(),
+    endDate: z.string().optional(),
   }),
 });
 
