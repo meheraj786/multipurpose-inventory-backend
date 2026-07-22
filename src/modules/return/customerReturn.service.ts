@@ -21,7 +21,11 @@ type UpdateCustomerReturnInput = {
   reason?: string;
 };
 
-const createCustomerReturn = async (data: CreateCustomerReturnInput, accountId: string, userId: string) => {
+const createCustomerReturn = async (
+  data: CreateCustomerReturnInput,
+  accountId: string,
+  userId: string,
+) => {
   const restock = data.restocked !== false;
 
   return await prisma.$transaction(async (tx) => {
@@ -43,15 +47,22 @@ const createCustomerReturn = async (data: CreateCustomerReturnInput, accountId: 
         if (item.itemType === "PRODUCT") {
           return sItem.itemType === "PRODUCT" && sItem.productId === item.productId;
         }
-        return sItem.itemType === "PREPARED_PRODUCT" && sItem.preparedProductId === item.preparedProductId;
+        return (
+          sItem.itemType === "PREPARED_PRODUCT" &&
+          sItem.preparedProductId === item.preparedProductId
+        );
       });
 
       if (!matchedItem) {
-        throw new Error("One or more returned items were not found inside the designated sale details");
+        throw new Error(
+          "One or more returned items were not found inside the designated sale details",
+        );
       }
 
       if (Number(matchedItem.quantity) < quantity) {
-        throw new Error(`Cannot return more items than purchased for product: ${matchedItem.productId || matchedItem.preparedProductId}`);
+        throw new Error(
+          `Cannot return more items than purchased for product: ${matchedItem.productId || matchedItem.preparedProductId}`,
+        );
       }
 
       const itemRefundValue = Number(matchedItem.sellPrice) * quantity;
@@ -81,7 +92,12 @@ const createCustomerReturn = async (data: CreateCustomerReturnInput, accountId: 
           if (!product) throw new Error("Product not found");
 
           const stock = await tx.productStock.findFirst({
-            where: { productId: item.productId, unitId: product.unitId, accountId, isDeleted: false },
+            where: {
+              productId: item.productId,
+              unitId: product.unitId,
+              accountId,
+              isDeleted: false,
+            },
             orderBy: { createdAt: "desc" },
           });
 
@@ -149,12 +165,7 @@ const createCustomerReturn = async (data: CreateCustomerReturnInput, accountId: 
   });
 };
 
-const getAllReturns = async (
-  accountId: string,
-  page = 1,
-  limit = 10,
-  search?: string,
-) => {
+const getAllReturns = async (accountId: string, page = 1, limit = 10, search?: string) => {
   const skip = (page - 1) * limit;
 
   const where: Prisma.CustomerReturnWhereInput = {
@@ -246,7 +257,12 @@ const deleteReturn = async (id: string, accountId: string, userId: string) => {
       if (customerReturn.itemType === "PREPARED_PRODUCT" && customerReturn.preparedProductId) {
         let remaining = qty;
         const stocks = await tx.preparedProductStock.findMany({
-          where: { preparedProductId: customerReturn.preparedProductId, accountId, isDeleted: false, quantity: { gt: 0 } },
+          where: {
+            preparedProductId: customerReturn.preparedProductId,
+            accountId,
+            isDeleted: false,
+            quantity: { gt: 0 },
+          },
           orderBy: { createdAt: "asc" },
         });
 
@@ -261,12 +277,19 @@ const deleteReturn = async (id: string, accountId: string, userId: string) => {
         }
 
         if (remaining > 0) {
-          throw new Error("Unable to delete return. Restocked prepared product inventory has already been consumed");
+          throw new Error(
+            "Unable to delete return. Restocked prepared product inventory has already been consumed",
+          );
         }
       } else if (customerReturn.itemType === "PRODUCT" && customerReturn.productId) {
         let remaining = qty;
         const stocks = await tx.productStock.findMany({
-          where: { productId: customerReturn.productId, accountId, isDeleted: false, quantity: { gt: 0 } },
+          where: {
+            productId: customerReturn.productId,
+            accountId,
+            isDeleted: false,
+            quantity: { gt: 0 },
+          },
           orderBy: { createdAt: "asc" },
         });
 
@@ -281,7 +304,9 @@ const deleteReturn = async (id: string, accountId: string, userId: string) => {
         }
 
         if (remaining > 0) {
-          throw new Error("Unable to delete return. Restocked product inventory has already been consumed");
+          throw new Error(
+            "Unable to delete return. Restocked product inventory has already been consumed",
+          );
         }
       }
     }
