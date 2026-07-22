@@ -20,7 +20,22 @@ const updateSupplierZodSchema = z.object({
   }),
 });
 
+const getSuppliersZodSchema = z.object({
+  query: z.object({
+    page: z.string().optional(),
+    limit: z.string().optional(),
+    search: z.string().optional(),
+    categoryId: z.string().optional(),
+    isActive: z.string().optional(),
+    hasDue: z
+      .string()
+      .optional()
+      .transform((v) => v === "true"),
+  }),
+});
+
 export const SupplierValidation = {
   createSupplierZodSchema,
   updateSupplierZodSchema,
+  getSuppliersZodSchema,
 };

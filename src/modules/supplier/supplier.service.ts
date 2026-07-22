@@ -35,6 +35,7 @@ const getAllSuppliers = async (
   search?: string,
   categoryId?: string,
   isActive?: boolean,
+  hasDue?: boolean,
 ) => {
   const skip = (page - 1) * limit;
 
@@ -43,6 +44,9 @@ const getAllSuppliers = async (
     isDeleted: false,
     ...(categoryId && { categoryId }),
     ...(isActive !== undefined && { isActive }),
+    ...(hasDue && {
+      purchases: { some: { isDeleted: false, due: { gt: 0 } } },
+    }),
     ...(search && {
       OR: [
         { name: { contains: search, mode: "insensitive" } },
@@ -53,7 +57,7 @@ const getAllSuppliers = async (
     }),
   };
 
-  const [data, total] = await Promise.all([
+  const [suppliers, total] = await Promise.all([
     prisma.supplier.findMany({
       where,
       skip,
@@ -68,6 +72,31 @@ const getAllSuppliers = async (
     }),
     prisma.supplier.count({ where }),
   ]);
+
+  const supplierIds = suppliers.map((s) => s.id);
+  const dueGrouped = await prisma.purchase.groupBy({
+    by: ["supplierId"],
+    where: { accountId, isDeleted: false, supplierId: { in: supplierIds } },
+    _sum: { due: true, paidAmount: true, totalCost: true },
+  });
+
+  const dueMap = new Map(
+    dueGrouped.map((g) => [
+      g.supplierId,
+      {
+        totalDue: Number(g._sum.due ?? 0),
+        totalPaid: Number(g._sum.paidAmount ?? 0),
+        totalPurchaseValue: Number(g._sum.totalCost ?? 0),
+      },
+    ]),
+  );
+
+  const data = suppliers.map((s) => ({
+    ...s,
+    totalDue: dueMap.get(s.id)?.totalDue ?? 0,
+    totalPaid: dueMap.get(s.id)?.totalPaid ?? 0,
+    totalPurchaseValue: dueMap.get(s.id)?.totalPurchaseValue ?? 0,
+  }));
 
   return {
     data,
@@ -89,7 +118,10 @@ const getSingleSupplier = async (id: string, accountId: string) => {
         where: { isDeleted: false },
         orderBy: { createdAt: "desc" },
         take: 20,
-        include: { productStocks: { include: { product: true } } },
+        include: {
+          productStocks: { include: { product: true } },
+          payments: { orderBy: { paidAt: "desc" } },
+        },
       },
       productStocks: {
         where: { isDeleted: false },
@@ -105,9 +137,22 @@ const getSingleSupplier = async (id: string, accountId: string) => {
 
   if (!supplier) throw new Error("Supplier not found");
 
-  const totalPurchaseValue = supplier.purchases.reduce((sum, p) => sum + Number(p.totalCost), 0);
+  const dueAgg = await prisma.purchase.aggregate({
+    where: { accountId, supplierId: id, isDeleted: false },
+    _sum: { totalCost: true, paidAmount: true, due: true },
+  });
 
-  return { ...supplier, totalPurchaseValue };
+  const unpaidPurchaseCount = await prisma.purchase.count({
+    where: { accountId, supplierId: id, isDeleted: false, due: { gt: 0 } },
+  });
+
+  return {
+    ...supplier,
+    totalPurchaseValue: Number(dueAgg._sum.totalCost ?? 0),
+    totalPaid: Number(dueAgg._sum.paidAmount ?? 0),
+    totalDue: Number(dueAgg._sum.due ?? 0),
+    unpaidPurchaseCount,
+  };
 };
 
 const updateSupplier = async (

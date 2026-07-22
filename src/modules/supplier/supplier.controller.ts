@@ -29,6 +29,7 @@ const getAllSuppliers = async (req: Request, res: Response, next: NextFunction) 
     const search = req.query.search as string | undefined;
     const categoryId = req.query.categoryId as string | undefined;
     const isActive = req.query.isActive !== undefined ? req.query.isActive === "true" : undefined;
+    const hasDue = req.query.hasDue === "true";
 
     const result = await SupplierService.getAllSuppliers(
       accountId,
@@ -37,6 +38,7 @@ const getAllSuppliers = async (req: Request, res: Response, next: NextFunction) 
       search,
       categoryId,
       isActive,
+      hasDue,
     );
 
     sendResponse(res, {
