@@ -10,35 +10,23 @@ const router = Router();
 router.use(authenticate);
 
 router.post(
-	"/",
-	checkPermission("WASTAGE"),
-	validateRequest(WastageValidation.createWastageZodSchema),
-	WastageController.createWastage,
+  "/",
+  checkPermission("WASTAGE"),
+  validateRequest(WastageValidation.createWastageZodSchema),
+  WastageController.createWastage,
 );
 
-router.get(
-	"/",
-	checkPermission("WASTAGE"),
-	WastageController.getAllWastages,
-);
+router.get("/", checkPermission("WASTAGE"), WastageController.getAllWastages);
 
-router.get(
-	"/:id",
-	checkPermission("WASTAGE"),
-	WastageController.getSingleWastage,
-);
+router.get("/:id", checkPermission("WASTAGE"), WastageController.getSingleWastage);
 
 router.patch(
-	"/:id",
-	checkPermission("WASTAGE"),
-	validateRequest(WastageValidation.updateWastageZodSchema),
-	WastageController.updateWastage,
+  "/:id",
+  checkPermission("WASTAGE"),
+  validateRequest(WastageValidation.updateWastageZodSchema),
+  WastageController.updateWastage,
 );
 
-router.delete(
-	"/:id",
-	checkPermission("WASTAGE"),
-	WastageController.deleteWastage,
-);
+router.delete("/:id", checkPermission("WASTAGE"), WastageController.deleteWastage);
 
 export const WastageRoutes: Router = router;

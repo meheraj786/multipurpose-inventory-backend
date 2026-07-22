@@ -62,7 +62,12 @@ const createWastage = async (data: CreateWastageInput, accountId: string, userId
 
       let remaining = quantity;
       const stocks = await tx.rawProductStock.findMany({
-        where: { rawProductId: data.rawProductId, accountId, isDeleted: false, quantity: { gt: 0 } },
+        where: {
+          rawProductId: data.rawProductId,
+          accountId,
+          isDeleted: false,
+          quantity: { gt: 0 },
+        },
         orderBy: { createdAt: "asc" },
       });
 
@@ -78,7 +83,12 @@ const createWastage = async (data: CreateWastageInput, accountId: string, userId
     } else if (data.preparedProductId) {
       let remaining = quantity;
       const stocks = await tx.preparedProductStock.findMany({
-        where: { preparedProductId: data.preparedProductId, accountId, isDeleted: false, quantity: { gt: 0 } },
+        where: {
+          preparedProductId: data.preparedProductId,
+          accountId,
+          isDeleted: false,
+          quantity: { gt: 0 },
+        },
         orderBy: { createdAt: "asc" },
       });
 
@@ -114,7 +124,8 @@ const createWastage = async (data: CreateWastageInput, accountId: string, userId
       },
     });
 
-    const targetName = wastage.product?.name ?? wastage.rawProduct?.name ?? wastage.preparedProduct?.name ?? "";
+    const targetName =
+      wastage.product?.name ?? wastage.rawProduct?.name ?? wastage.preparedProduct?.name ?? "";
 
     await ActivityLogService.createLog({
       userId,
@@ -128,12 +139,7 @@ const createWastage = async (data: CreateWastageInput, accountId: string, userId
   });
 };
 
-const getAllWastages = async (
-  accountId: string,
-  page = 1,
-  limit = 10,
-  search?: string,
-) => {
+const getAllWastages = async (accountId: string, page = 1, limit = 10, search?: string) => {
   const skip = (page - 1) * limit;
 
   const where: Prisma.WastageWhereInput = {
@@ -298,7 +304,8 @@ const deleteWastage = async (id: string, accountId: string, userId: string) => {
       data: { isDeleted: true },
     });
 
-    const targetName = wastage.product?.name ?? wastage.rawProduct?.name ?? wastage.preparedProduct?.name ?? "";
+    const targetName =
+      wastage.product?.name ?? wastage.rawProduct?.name ?? wastage.preparedProduct?.name ?? "";
 
     await TrashService.addToTrash({
       moduleName: SystemModule.WASTAGE,

@@ -10,35 +10,23 @@ const router = Router();
 router.use(authenticate);
 
 router.post(
-	"/",
-	checkPermission("SALE"),
-	validateRequest(CustomerReturnValidation.createCustomerReturnZodSchema),
-	CustomerReturnController.createCustomerReturn,
+  "/",
+  checkPermission("SALE"),
+  validateRequest(CustomerReturnValidation.createCustomerReturnZodSchema),
+  CustomerReturnController.createCustomerReturn,
 );
 
-router.get(
-	"/",
-	checkPermission("SALE"),
-	CustomerReturnController.getAllReturns,
-);
+router.get("/", checkPermission("SALE"), CustomerReturnController.getAllReturns);
 
-router.get(
-	"/:id",
-	checkPermission("SALE"),
-	CustomerReturnController.getSingleReturn,
-);
+router.get("/:id", checkPermission("SALE"), CustomerReturnController.getSingleReturn);
 
 router.patch(
-	"/:id",
-	checkPermission("SALE"),
-	validateRequest(CustomerReturnValidation.updateCustomerReturnZodSchema),
-	CustomerReturnController.updateReturn,
+  "/:id",
+  checkPermission("SALE"),
+  validateRequest(CustomerReturnValidation.updateCustomerReturnZodSchema),
+  CustomerReturnController.updateReturn,
 );
 
-router.delete(
-	"/:id",
-	checkPermission("SALE"),
-	CustomerReturnController.deleteReturn,
-);
+router.delete("/:id", checkPermission("SALE"), CustomerReturnController.deleteReturn);
 
 export const CustomerReturnRoutes: Router = router;
