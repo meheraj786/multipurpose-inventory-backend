@@ -197,8 +197,7 @@ import { ActivityLogService } from "../activityLog/activityLog.service.js";
 import { DashboardService } from "../dashboard/dashboard.service.js";
 import type { AskAssistantInput } from "./assistant.validation.js";
 
-const sleep = (ms: number): Promise<void> =>
-  new Promise((resolve) => setTimeout(resolve, ms));
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 type Message =
   | {
@@ -235,25 +234,22 @@ const queryGroqWithTools = async (
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 12000);
 
-    const response = await fetch(
-      "https://api.groq.com/openai/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "llama-3.1-8b-instant",
-          messages,
-          tools,
-          tool_choice: "auto",
-          temperature: 0.1,
-          max_tokens: 1000,
-        }),
-        signal: controller.signal,
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
       },
-    );
+      body: JSON.stringify({
+        model: "llama-3.1-8b-instant",
+        messages,
+        tools,
+        tool_choice: "auto",
+        temperature: 0.1,
+        max_tokens: 1000,
+      }),
+      signal: controller.signal,
+    });
 
     clearTimeout(timeoutId);
 
@@ -263,9 +259,7 @@ const queryGroqWithTools = async (
         await sleep(8000 * (retryCount + 1));
         return queryGroqWithTools(messages, tools, toolHandler, retryCount + 1);
       }
-      throw new Error(
-        errorData?.error?.message || `Groq Error: ${response.status}`,
-      );
+      throw new Error(errorData?.error?.message || `Groq Error: ${response.status}`);
     }
 
     const data = await response.json();
@@ -341,10 +335,7 @@ const getProductDetails = async (
 
   if (!product) return { error: "Product not found" };
 
-  const stock = product.productStocks.reduce(
-    (sum, s) => sum + Number(s.quantity),
-    0,
-  );
+  const stock = product.productStocks.reduce((sum, s) => sum + Number(s.quantity), 0);
 
   return {
     name: product.name,
@@ -395,20 +386,14 @@ const askAssistant = async (
     { role: "user", content: message },
   ];
 
-  const responseText = await queryGroqWithTools(
-    messages,
-    tools,
-    async (toolCall: ToolCall) => {
-      const { name } = toolCall.function;
-      const args = JSON.parse(toolCall.function.arguments || "{}");
+  const responseText = await queryGroqWithTools(messages, tools, async (toolCall: ToolCall) => {
+    const { name } = toolCall.function;
+    const args = JSON.parse(toolCall.function.arguments || "{}");
 
-      if (name === "get_business_summary")
-        return await getBusinessSummary(accountId);
-      if (name === "get_product_details")
-        return await getProductDetails(accountId, args);
-      return { error: "Unknown tool" };
-    },
-  );
+    if (name === "get_business_summary") return await getBusinessSummary(accountId);
+    if (name === "get_product_details") return await getProductDetails(accountId, args);
+    return { error: "Unknown tool" };
+  });
 
   await ActivityLogService.createLog({
     userId,
