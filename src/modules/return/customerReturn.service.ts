@@ -1,4 +1,8 @@
-import { type Prisma, SystemAction, SystemModule } from "../../generated/prisma/index.js";
+import {
+  type Prisma,
+  SystemAction,
+  SystemModule,
+} from "../../generated/prisma/index.js";
 import prisma from "../../shared/utils/prisma.js";
 import { ActivityLogService } from "../activityLog/activityLog.service.js";
 import { TrashService } from "../trash/trash.service.js";
@@ -21,6 +25,15 @@ type UpdateCustomerReturnInput = {
   reason?: string;
 };
 
+const itemKey = (
+  itemType: "PRODUCT" | "PREPARED_PRODUCT",
+  productId?: string | null,
+  preparedProductId?: string | null,
+) =>
+  itemType === "PRODUCT"
+    ? `PRODUCT:${productId}`
+    : `PREPARED_PRODUCT:${preparedProductId}`;
+
 const createCustomerReturn = async (
   data: CreateCustomerReturnInput,
   accountId: string,
@@ -36,16 +49,38 @@ const createCustomerReturn = async (
 
     if (!sale) throw new Error("Sale transaction records not found");
 
+    const existingReturns = await tx.customerReturn.findMany({
+      where: { saleId: data.saleId, accountId, isDeleted: false },
+    });
+
+    const alreadyReturnedMap = new Map<string, number>();
+    for (const r of existingReturns) {
+      const key = itemKey(
+        r.itemType as "PRODUCT" | "PREPARED_PRODUCT",
+        r.productId,
+        r.preparedProductId,
+      );
+      alreadyReturnedMap.set(
+        key,
+        (alreadyReturnedMap.get(key) ?? 0) + Number(r.quantity),
+      );
+    }
+
     let totalRefundValue = 0;
-    const returnRecordsToCreate: Prisma.CustomerReturnCreateManyInput[] = [];
+    const returnRecordsToCreate: (Prisma.CustomerReturnCreateManyInput & {
+      refundAmount: number;
+    })[] = [];
 
     for (const item of data.items) {
       const quantity = Number(item.quantity);
-      if (quantity <= 0) throw new Error("Return quantity must be greater than 0");
+      if (quantity <= 0)
+        throw new Error("Return quantity must be greater than 0");
 
       const matchedItem = sale.saleItems.find((sItem) => {
         if (item.itemType === "PRODUCT") {
-          return sItem.itemType === "PRODUCT" && sItem.productId === item.productId;
+          return (
+            sItem.itemType === "PRODUCT" && sItem.productId === item.productId
+          );
         }
         return (
           sItem.itemType === "PREPARED_PRODUCT" &&
@@ -59,11 +94,21 @@ const createCustomerReturn = async (
         );
       }
 
-      if (Number(matchedItem.quantity) < quantity) {
+      const key = itemKey(
+        item.itemType,
+        item.productId,
+        item.preparedProductId,
+      );
+      const alreadyReturned = alreadyReturnedMap.get(key) ?? 0;
+      const availableToReturn = Number(matchedItem.quantity) - alreadyReturned;
+
+      if (quantity > availableToReturn) {
         throw new Error(
-          `Cannot return more items than purchased for product: ${matchedItem.productId || matchedItem.preparedProductId}`,
+          `Cannot return ${quantity} unit(s) for ${item.productId || item.preparedProductId}. Only ${Math.max(0, availableToReturn)} unit(s) remain returnable (already returned: ${alreadyReturned}).`,
         );
       }
+
+      alreadyReturnedMap.set(key, alreadyReturned + quantity);
 
       const itemRefundValue = Number(matchedItem.sellPrice) * quantity;
       totalRefundValue += itemRefundValue;
@@ -71,7 +116,11 @@ const createCustomerReturn = async (
       if (restock) {
         if (item.itemType === "PREPARED_PRODUCT" && item.preparedProductId) {
           const stock = await tx.preparedProductStock.findFirst({
-            where: { preparedProductId: item.preparedProductId, accountId, isDeleted: false },
+            where: {
+              preparedProductId: item.preparedProductId,
+              accountId,
+              isDeleted: false,
+            },
             orderBy: { createdAt: "desc" },
           });
 
@@ -82,12 +131,16 @@ const createCustomerReturn = async (
             });
           } else {
             await tx.preparedProductStock.create({
-              data: { preparedProductId: item.preparedProductId, accountId, quantity },
+              data: {
+                preparedProductId: item.preparedProductId,
+                accountId,
+                quantity,
+              },
             });
           }
         } else if (item.itemType === "PRODUCT" && item.productId) {
-          const product = await tx.product.findUnique({
-            where: { id: item.productId },
+          const product = await tx.product.findFirst({
+            where: { id: item.productId, accountId },
           });
           if (!product) throw new Error("Product not found");
 
@@ -129,6 +182,8 @@ const createCustomerReturn = async (
         preparedProductId: item.preparedProductId || null,
         quantity,
         refundAmount: itemRefundValue,
+        excessRefundAmount: 0,
+        requiresManualRefund: false,
         restocked: restock,
         reason: data.reason || null,
         accountId,
@@ -136,7 +191,25 @@ const createCustomerReturn = async (
     }
 
     const originalDue = Number(sale.due ?? 0);
-    const newDue = Math.max(0, Number((originalDue - totalRefundValue).toFixed(2)));
+    const appliedToDue = Math.min(originalDue, totalRefundValue);
+    const excessAmount = Number((totalRefundValue - appliedToDue).toFixed(2));
+    const newDue = Number((originalDue - appliedToDue).toFixed(2));
+
+    if (excessAmount > 0) {
+      for (const record of returnRecordsToCreate) {
+        const share =
+          totalRefundValue > 0
+            ? Number(
+                (
+                  (record.refundAmount / totalRefundValue) *
+                  excessAmount
+                ).toFixed(2),
+              )
+            : 0;
+        record.excessRefundAmount = share;
+        record.requiresManualRefund = share > 0;
+      }
+    }
 
     await tx.sale.update({
       where: { id: data.saleId },
@@ -153,19 +226,30 @@ const createCustomerReturn = async (
       userId,
       module: SystemModule.SALE,
       action: SystemAction.STOCK_IN,
-      details: `Processed batch customer return for Sale #${data.saleId.slice(0, 8)}. Total Refund: ${totalRefundValue}`,
+      details: `Processed batch customer return for Sale #${data.saleId.slice(0, 8)}. Total Refund: ${totalRefundValue}${
+        excessAmount > 0
+          ? ` (excess requiring manual refund: ${excessAmount})`
+          : ""
+      }`,
       accountId,
     });
 
     return {
       success: true,
       totalRefundValue,
+      excessAmount,
+      requiresManualRefund: excessAmount > 0,
       newDue,
     };
   });
 };
 
-const getAllReturns = async (accountId: string, page = 1, limit = 10, search?: string) => {
+const getAllReturns = async (
+  accountId: string,
+  page = 1,
+  limit = 10,
+  search?: string,
+) => {
   const skip = (page - 1) * limit;
 
   const where: Prisma.CustomerReturnWhereInput = {
@@ -176,7 +260,9 @@ const getAllReturns = async (accountId: string, page = 1, limit = 10, search?: s
         { reason: { contains: search, mode: "insensitive" } },
         { saleId: { contains: search, mode: "insensitive" } },
         { product: { name: { contains: search, mode: "insensitive" } } },
-        { preparedProduct: { name: { contains: search, mode: "insensitive" } } },
+        {
+          preparedProduct: { name: { contains: search, mode: "insensitive" } },
+        },
       ],
     }),
   };
@@ -254,7 +340,10 @@ const deleteReturn = async (id: string, accountId: string, userId: string) => {
     const qty = Number(customerReturn.quantity);
 
     if (customerReturn.restocked) {
-      if (customerReturn.itemType === "PREPARED_PRODUCT" && customerReturn.preparedProductId) {
+      if (
+        customerReturn.itemType === "PREPARED_PRODUCT" &&
+        customerReturn.preparedProductId
+      ) {
         let remaining = qty;
         const stocks = await tx.preparedProductStock.findMany({
           where: {
@@ -281,7 +370,10 @@ const deleteReturn = async (id: string, accountId: string, userId: string) => {
             "Unable to delete return. Restocked prepared product inventory has already been consumed",
           );
         }
-      } else if (customerReturn.itemType === "PRODUCT" && customerReturn.productId) {
+      } else if (
+        customerReturn.itemType === "PRODUCT" &&
+        customerReturn.productId
+      ) {
         let remaining = qty;
         const stocks = await tx.productStock.findMany({
           where: {
@@ -312,10 +404,13 @@ const deleteReturn = async (id: string, accountId: string, userId: string) => {
     }
 
     const refund = Number(customerReturn.refundAmount);
-    if (refund > 0) {
+    const excess = Number(customerReturn.excessRefundAmount ?? 0);
+    const appliedRefund = Number((refund - excess).toFixed(2));
+
+    if (appliedRefund > 0) {
       await tx.sale.update({
         where: { id: customerReturn.saleId },
-        data: { due: { increment: refund } },
+        data: { due: { increment: appliedRefund } },
       });
     }
 
@@ -324,7 +419,10 @@ const deleteReturn = async (id: string, accountId: string, userId: string) => {
       data: { isDeleted: true },
     });
 
-    const targetName = customerReturn.product?.name ?? customerReturn.preparedProduct?.name ?? "";
+    const targetName =
+      customerReturn.product?.name ??
+      customerReturn.preparedProduct?.name ??
+      "";
 
     await TrashService.addToTrash({
       moduleName: SystemModule.SALE,

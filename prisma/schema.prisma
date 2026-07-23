@@ -378,7 +378,7 @@ model PreparedProduct {
   preparedProductItems  PreparedProductItem[]
   saleItems             SaleItem[]
   wastages              Wastage[]
-  returns               CustomerReturn[]
+  customerReturns               CustomerReturn[]
 
   sales Sale[]
 
@@ -560,7 +560,7 @@ model Sale {
   saleItems    SaleItem[]
   saleServices SaleService[]
   invoices     Invoice[]
-  returns      CustomerReturn[]
+  customerReturns      CustomerReturn[]
 
   @@index([accountId])
   @@index([customerId])
@@ -643,23 +643,25 @@ model Wastage {
 }
 
 model CustomerReturn {
-  id                String           @id @default(uuid())
-  saleId            String
-  sale              Sale             @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  itemType          SaleItemType     @default(PRODUCT)
-  productId         String?
-  product           Product?         @relation(fields: [productId], references: [id])
-  preparedProductId String?
-  preparedProduct   PreparedProduct? @relation(fields: [preparedProductId], references: [id])
-  quantity          Decimal
-  refundAmount      Decimal          @default(0)
-  restocked         Boolean          @default(true)
-  reason            String?
-  isDeleted         Boolean          @default(false)
-  accountId         String
-  account           Account          @relation(fields: [accountId], references: [id])
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
+  id                   String           @id @default(uuid())
+  saleId               String
+  sale                 Sale             @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  itemType             SaleItemType     @default(PRODUCT)
+  productId            String?
+  product              Product?         @relation(fields: [productId], references: [id])
+  preparedProductId    String?
+  preparedProduct      PreparedProduct? @relation(fields: [preparedProductId], references: [id])
+  quantity             Decimal
+  refundAmount         Decimal          @default(0)
+  excessRefundAmount   Decimal          @default(0)
+  requiresManualRefund Boolean          @default(false)
+  restocked            Boolean          @default(true)
+  reason               String?
+  isDeleted            Boolean          @default(false)
+  accountId            String
+  account              Account          @relation(fields: [accountId], references: [id])
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
 
   @@index([accountId])
   @@index([saleId])

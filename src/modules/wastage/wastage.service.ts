@@ -1,4 +1,8 @@
-import { type Prisma, SystemAction, SystemModule } from "../../generated/prisma/index.js";
+import {
+  type Prisma,
+  SystemAction,
+  SystemModule,
+} from "../../generated/prisma/index.js";
 import prisma from "../../shared/utils/prisma.js";
 import { ActivityLogService } from "../activityLog/activityLog.service.js";
 import { TrashService } from "../trash/trash.service.js";
@@ -17,7 +21,11 @@ type UpdateWastageInput = {
   notes?: string;
 };
 
-const createWastage = async (data: CreateWastageInput, accountId: string, userId: string) => {
+const createWastage = async (
+  data: CreateWastageInput,
+  accountId: string,
+  userId: string,
+) => {
   if (!data.productId && !data.rawProductId && !data.preparedProductId) {
     throw new Error("Specify at least one product asset to record wastage");
   }
@@ -29,7 +37,12 @@ const createWastage = async (data: CreateWastageInput, accountId: string, userId
     if (data.productId) {
       let remaining = quantity;
       const stocks = await tx.productStock.findMany({
-        where: { productId: data.productId, accountId, isDeleted: false, quantity: { gt: 0 } },
+        where: {
+          productId: data.productId,
+          accountId,
+          isDeleted: false,
+          quantity: { gt: 0 },
+        },
         orderBy: { createdAt: "asc" },
       });
 
@@ -103,7 +116,9 @@ const createWastage = async (data: CreateWastageInput, accountId: string, userId
       }
 
       if (remaining > 0) {
-        throw new Error("Insufficient stock to record prepared product wastage");
+        throw new Error(
+          "Insufficient stock to record prepared product wastage",
+        );
       }
     }
 
@@ -125,7 +140,10 @@ const createWastage = async (data: CreateWastageInput, accountId: string, userId
     });
 
     const targetName =
-      wastage.product?.name ?? wastage.rawProduct?.name ?? wastage.preparedProduct?.name ?? "";
+      wastage.product?.name ??
+      wastage.rawProduct?.name ??
+      wastage.preparedProduct?.name ??
+      "";
 
     await ActivityLogService.createLog({
       userId,
@@ -139,7 +157,12 @@ const createWastage = async (data: CreateWastageInput, accountId: string, userId
   });
 };
 
-const getAllWastages = async (accountId: string, page = 1, limit = 10, search?: string) => {
+const getAllWastages = async (
+  accountId: string,
+  page = 1,
+  limit = 10,
+  search?: string,
+) => {
   const skip = (page - 1) * limit;
 
   const where: Prisma.WastageWhereInput = {
@@ -151,7 +174,9 @@ const getAllWastages = async (accountId: string, page = 1, limit = 10, search?: 
         { notes: { contains: search, mode: "insensitive" } },
         { product: { name: { contains: search, mode: "insensitive" } } },
         { rawProduct: { name: { contains: search, mode: "insensitive" } } },
-        { preparedProduct: { name: { contains: search, mode: "insensitive" } } },
+        {
+          preparedProduct: { name: { contains: search, mode: "insensitive" } },
+        },
       ],
     }),
   };
@@ -172,8 +197,10 @@ const getAllWastages = async (accountId: string, page = 1, limit = 10, search?: 
   ]);
 
   return {
-    data,
-    meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    data: {
+      data,
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    },
   };
 };
 
@@ -239,7 +266,9 @@ const deleteWastage = async (id: string, accountId: string, userId: string) => {
           data: { quantity: { increment: qty } },
         });
       } else {
-        const product = await tx.product.findUnique({ where: { id: wastage.productId } });
+        const product = await tx.product.findUnique({
+          where: { id: wastage.productId },
+        });
         if (product) {
           await tx.productStock.create({
             data: {
@@ -261,7 +290,11 @@ const deleteWastage = async (id: string, accountId: string, userId: string) => {
       });
 
       const stock = await tx.rawProductStock.findFirst({
-        where: { rawProductId: wastage.rawProductId, accountId, isDeleted: false },
+        where: {
+          rawProductId: wastage.rawProductId,
+          accountId,
+          isDeleted: false,
+        },
         orderBy: { createdAt: "desc" },
       });
       if (stock) {
@@ -280,7 +313,11 @@ const deleteWastage = async (id: string, accountId: string, userId: string) => {
       }
     } else if (wastage.preparedProductId) {
       const stock = await tx.preparedProductStock.findFirst({
-        where: { preparedProductId: wastage.preparedProductId, accountId, isDeleted: false },
+        where: {
+          preparedProductId: wastage.preparedProductId,
+          accountId,
+          isDeleted: false,
+        },
         orderBy: { createdAt: "desc" },
       });
       if (stock) {
@@ -305,7 +342,10 @@ const deleteWastage = async (id: string, accountId: string, userId: string) => {
     });
 
     const targetName =
-      wastage.product?.name ?? wastage.rawProduct?.name ?? wastage.preparedProduct?.name ?? "";
+      wastage.product?.name ??
+      wastage.rawProduct?.name ??
+      wastage.preparedProduct?.name ??
+      "";
 
     await TrashService.addToTrash({
       moduleName: SystemModule.WASTAGE,

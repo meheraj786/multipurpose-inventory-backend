@@ -30,6 +30,7 @@ import { DashboardRoutes } from "./modules/dashboard/dashboard.routes.js";
 import { AssistantRoutes } from "./modules/assistant/assistant.routes.js";
 import { AccountRoutes } from "./modules/account/account.routes.js";
 import { WastageRoutes } from "./modules/wastage/wastage.routes.js";
+import { CustomerReturnRoutes } from "./modules/return/customerReturn.route.js";
 
 const app: Express = express();
 
@@ -98,6 +99,7 @@ app.use("/api/v1/dashboard", authenticate, DashboardRoutes);
 app.use("/api/v1/assistant", authenticate, AssistantRoutes);
 app.use("/api/v1/accounts", authenticate, checkPermission("ACCOUNT"), AccountRoutes);
 app.use("/api/v1/wastages", authenticate, checkPermission("WASTAGE"), WastageRoutes);
+app.use("/api/v1/customer-returns", authenticate, checkPermission("SALE"), CustomerReturnRoutes);
 
 // ==================== ERROR HANDLING ====================
 app.use(notFoundHandler);
