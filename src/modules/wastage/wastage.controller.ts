@@ -34,8 +34,8 @@ const getAllWastages = async (req: Request, res: Response, next: NextFunction) =
       statusCode: httpStatus.OK,
       success: true,
       message: "Wastages fetched successfully",
-      data: result.data.data,      // ← Fixed
-      meta: result.data.meta,      // ← Fixed
+      data: result.data.data, // ← Fixed
+      meta: result.data.meta, // ← Fixed
     });
   } catch (error) {
     next(error);
