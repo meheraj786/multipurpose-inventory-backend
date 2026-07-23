@@ -1,8 +1,4 @@
-import {
-  type Prisma,
-  SystemAction,
-  SystemModule,
-} from "../../generated/prisma/index.js";
+import { type Prisma, SystemAction, SystemModule } from "../../generated/prisma/index.js";
 import prisma from "../../shared/utils/prisma.js";
 import { ActivityLogService } from "../activityLog/activityLog.service.js";
 import { TrashService } from "../trash/trash.service.js";
@@ -65,45 +61,33 @@ const getReturnedProfitAdjustment = (sale: {
       Number(item.purchasePrice ?? 0) * quantity -
       Number(item.discount ?? 0);
 
-    const returnedQuantity = (sale.customerReturns ?? []).reduce(
-      (returnQty, returnItem) => {
-        if (
-          returnItem.itemType !== item.itemType ||
-          returnItem.productId !== item.productId ||
-          returnItem.preparedProductId !== item.preparedProductId
-        ) {
-          return returnQty;
-        }
+    const returnedQuantity = (sale.customerReturns ?? []).reduce((returnQty, returnItem) => {
+      if (
+        returnItem.itemType !== item.itemType ||
+        returnItem.productId !== item.productId ||
+        returnItem.preparedProductId !== item.preparedProductId
+      ) {
+        return returnQty;
+      }
 
-        return returnQty + Number(returnItem.quantity ?? 0);
-      },
-      0,
-    );
+      return returnQty + Number(returnItem.quantity ?? 0);
+    }, 0);
 
     if (returnedQuantity <= 0) return sum;
     return sum + (lineProfit / quantity) * returnedQuantity;
   }, 0);
 };
 
-const createSale = async (
-  data: CreateSaleInput,
-  accountId: string,
-  userId: string,
-) => {
+const createSale = async (data: CreateSaleInput, accountId: string, userId: string) => {
   if (!accountId) throw new Error("accountId is required");
 
   return await prisma.$transaction(async (tx) => {
     const sale = await tx.sale.create({
       data: {
-        customerId:
-          data.customerId && data.customerId.trim() !== ""
-            ? data.customerId
-            : null,
+        customerId: data.customerId && data.customerId.trim() !== "" ? data.customerId : null,
         customerNumber: data.customerNumber ?? null,
         paymentMethod: data.paymentMethod,
-        payments: data.payments
-          ? JSON.parse(JSON.stringify(data.payments))
-          : null,
+        payments: data.payments ? JSON.parse(JSON.stringify(data.payments)) : null,
         discount: data.discount ?? 0,
         due: data.due ?? 0,
         accountId,
@@ -124,24 +108,19 @@ const createSale = async (
       for (const item of data.saleItems) {
         if (item.itemType === "PREPARED_PRODUCT") {
           if (!item.preparedProductId) {
-            throw new Error(
-              "preparedProductId is required for PREPARED_PRODUCT items",
-            );
+            throw new Error("preparedProductId is required for PREPARED_PRODUCT items");
           }
 
           const preparedProduct = await tx.preparedProduct.findFirst({
             where: { id: item.preparedProductId, accountId, isDeleted: false },
           });
           if (!preparedProduct) {
-            throw new Error(
-              `Prepared product not found: ${item.preparedProductId}`,
-            );
+            throw new Error(`Prepared product not found: ${item.preparedProductId}`);
           }
 
           const unitId = item.unitId ?? preparedProduct.unitId;
           const purchasePrice =
-            stockCosts[item.preparedProductId] ??
-            Number(preparedProduct.rawMaterialCost ?? 0);
+            stockCosts[item.preparedProductId] ?? Number(preparedProduct.rawMaterialCost ?? 0);
 
           await tx.saleItem.create({
             data: {
@@ -190,8 +169,7 @@ const createSale = async (
 
     if (data.saleServices && data.saleServices.length > 0) {
       for (const service of data.saleServices) {
-        const total =
-          service.unitPrice * service.quantity - (service.discount ?? 0);
+        const total = service.unitPrice * service.quantity - (service.discount ?? 0);
         await tx.saleService.create({
           data: {
             saleId: sale.id,
@@ -296,21 +274,12 @@ const getAllSales = async (
       profit: getServiceProfit(sv),
     }));
 
-    const itemTotalProfit = itemsWithProfit.reduce(
-      (sum, i) => sum + i.profit,
-      0,
-    );
-    const serviceTotalProfit = servicesWithProfit.reduce(
-      (sum, s) => sum + s.profit,
-      0,
-    );
+    const itemTotalProfit = itemsWithProfit.reduce((sum, i) => sum + i.profit, 0);
+    const serviceTotalProfit = servicesWithProfit.reduce((sum, s) => sum + s.profit, 0);
     const saleDiscount = Number(sale.discount ?? 0);
     const returnedProfitAdjustment = getReturnedProfitAdjustment(sale);
     const totalProfit =
-      itemTotalProfit +
-      serviceTotalProfit -
-      saleDiscount -
-      returnedProfitAdjustment;
+      itemTotalProfit + serviceTotalProfit - saleDiscount - returnedProfitAdjustment;
 
     return {
       ...sale,
@@ -356,17 +325,11 @@ const getSingleSale = async (id: string, accountId: string) => {
   }));
 
   const itemTotalProfit = itemsWithProfit.reduce((sum, i) => sum + i.profit, 0);
-  const serviceTotalProfit = servicesWithProfit.reduce(
-    (sum, s) => sum + s.profit,
-    0,
-  );
+  const serviceTotalProfit = servicesWithProfit.reduce((sum, s) => sum + s.profit, 0);
   const saleDiscount = Number(sale.discount ?? 0);
   const returnedProfitAdjustment = getReturnedProfitAdjustment(sale);
   const totalProfit =
-    itemTotalProfit +
-    serviceTotalProfit -
-    saleDiscount -
-    returnedProfitAdjustment;
+    itemTotalProfit + serviceTotalProfit - saleDiscount - returnedProfitAdjustment;
 
   return {
     ...sale,
@@ -376,12 +339,7 @@ const getSingleSale = async (id: string, accountId: string) => {
   };
 };
 
-const updateSale = async (
-  id: string,
-  accountId: string,
-  userId: string,
-  data: UpdateSaleInput,
-) => {
+const updateSale = async (id: string, accountId: string, userId: string, data: UpdateSaleInput) => {
   const existing = await prisma.sale.findFirst({
     where: { id, accountId, isDeleted: false },
   });
@@ -396,9 +354,7 @@ const updateSale = async (
       }),
       ...(data.paymentMethod && { paymentMethod: data.paymentMethod }),
       ...(data.payments !== undefined && {
-        payments: data.payments
-          ? JSON.parse(JSON.stringify(data.payments))
-          : null,
+        payments: data.payments ? JSON.parse(JSON.stringify(data.payments)) : null,
       }),
       ...(data.discount !== undefined && { discount: data.discount }),
       ...(data.due !== undefined && { due: data.due }),
@@ -416,12 +372,7 @@ const updateSale = async (
   return updated;
 };
 
-const payDue = async (
-  saleId: string,
-  accountId: string,
-  userId: string,
-  data: PayDueInput,
-) => {
+const payDue = async (saleId: string, accountId: string, userId: string, data: PayDueInput) => {
   return await prisma.$transaction(async (tx) => {
     const sale = await tx.sale.findFirst({
       where: { id: saleId, accountId, isDeleted: false },
@@ -434,9 +385,7 @@ const payDue = async (
     if (currentDue <= 0) throw new Error("This sale has no outstanding due");
 
     if (data.amountPaid > currentDue) {
-      throw new Error(
-        `Amount paid (${data.amountPaid}) exceeds outstanding due (${currentDue})`,
-      );
+      throw new Error(`Amount paid (${data.amountPaid}) exceeds outstanding due (${currentDue})`);
     }
 
     const newDue = Number((currentDue - data.amountPaid).toFixed(2));
@@ -447,8 +396,7 @@ const payDue = async (
       data: { due: newDue },
     });
 
-    const billTo =
-      sale.customer?.name ?? sale.customerNumber ?? "Walk-in Customer";
+    const billTo = sale.customer?.name ?? sale.customerNumber ?? "Walk-in Customer";
 
     const invoice = await tx.invoice.create({
       data: {

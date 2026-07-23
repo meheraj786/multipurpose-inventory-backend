@@ -1,8 +1,4 @@
-import {
-  type Prisma,
-  SystemAction,
-  SystemModule,
-} from "../../generated/prisma/index.js";
+import { type Prisma, SystemAction, SystemModule } from "../../generated/prisma/index.js";
 import prisma from "../../shared/utils/prisma.js";
 import { ActivityLogService } from "../activityLog/activityLog.service.js";
 import { TrashService } from "../trash/trash.service.js";
@@ -29,10 +25,7 @@ const itemKey = (
   itemType: "PRODUCT" | "PREPARED_PRODUCT",
   productId?: string | null,
   preparedProductId?: string | null,
-) =>
-  itemType === "PRODUCT"
-    ? `PRODUCT:${productId}`
-    : `PREPARED_PRODUCT:${preparedProductId}`;
+) => (itemType === "PRODUCT" ? `PRODUCT:${productId}` : `PREPARED_PRODUCT:${preparedProductId}`);
 
 const createCustomerReturn = async (
   data: CreateCustomerReturnInput,
@@ -60,10 +53,7 @@ const createCustomerReturn = async (
         r.productId,
         r.preparedProductId,
       );
-      alreadyReturnedMap.set(
-        key,
-        (alreadyReturnedMap.get(key) ?? 0) + Number(r.quantity),
-      );
+      alreadyReturnedMap.set(key, (alreadyReturnedMap.get(key) ?? 0) + Number(r.quantity));
     }
 
     let totalRefundValue = 0;
@@ -73,14 +63,11 @@ const createCustomerReturn = async (
 
     for (const item of data.items) {
       const quantity = Number(item.quantity);
-      if (quantity <= 0)
-        throw new Error("Return quantity must be greater than 0");
+      if (quantity <= 0) throw new Error("Return quantity must be greater than 0");
 
       const matchedItem = sale.saleItems.find((sItem) => {
         if (item.itemType === "PRODUCT") {
-          return (
-            sItem.itemType === "PRODUCT" && sItem.productId === item.productId
-          );
+          return sItem.itemType === "PRODUCT" && sItem.productId === item.productId;
         }
         return (
           sItem.itemType === "PREPARED_PRODUCT" &&
@@ -94,11 +81,7 @@ const createCustomerReturn = async (
         );
       }
 
-      const key = itemKey(
-        item.itemType,
-        item.productId,
-        item.preparedProductId,
-      );
+      const key = itemKey(item.itemType, item.productId, item.preparedProductId);
       const alreadyReturned = alreadyReturnedMap.get(key) ?? 0;
       const availableToReturn = Number(matchedItem.quantity) - alreadyReturned;
 
@@ -199,12 +182,7 @@ const createCustomerReturn = async (
       for (const record of returnRecordsToCreate) {
         const share =
           totalRefundValue > 0
-            ? Number(
-                (
-                  (record.refundAmount / totalRefundValue) *
-                  excessAmount
-                ).toFixed(2),
-              )
+            ? Number(((record.refundAmount / totalRefundValue) * excessAmount).toFixed(2))
             : 0;
         record.excessRefundAmount = share;
         record.requiresManualRefund = share > 0;
@@ -227,9 +205,7 @@ const createCustomerReturn = async (
       module: SystemModule.SALE,
       action: SystemAction.STOCK_IN,
       details: `Processed batch customer return for Sale #${data.saleId.slice(0, 8)}. Total Refund: ${totalRefundValue}${
-        excessAmount > 0
-          ? ` (excess requiring manual refund: ${excessAmount})`
-          : ""
+        excessAmount > 0 ? ` (excess requiring manual refund: ${excessAmount})` : ""
       }`,
       accountId,
     });
@@ -244,12 +220,7 @@ const createCustomerReturn = async (
   });
 };
 
-const getAllReturns = async (
-  accountId: string,
-  page = 1,
-  limit = 10,
-  search?: string,
-) => {
+const getAllReturns = async (accountId: string, page = 1, limit = 10, search?: string) => {
   const skip = (page - 1) * limit;
 
   const where: Prisma.CustomerReturnWhereInput = {
@@ -340,10 +311,7 @@ const deleteReturn = async (id: string, accountId: string, userId: string) => {
     const qty = Number(customerReturn.quantity);
 
     if (customerReturn.restocked) {
-      if (
-        customerReturn.itemType === "PREPARED_PRODUCT" &&
-        customerReturn.preparedProductId
-      ) {
+      if (customerReturn.itemType === "PREPARED_PRODUCT" && customerReturn.preparedProductId) {
         let remaining = qty;
         const stocks = await tx.preparedProductStock.findMany({
           where: {
@@ -370,10 +338,7 @@ const deleteReturn = async (id: string, accountId: string, userId: string) => {
             "Unable to delete return. Restocked prepared product inventory has already been consumed",
           );
         }
-      } else if (
-        customerReturn.itemType === "PRODUCT" &&
-        customerReturn.productId
-      ) {
+      } else if (customerReturn.itemType === "PRODUCT" && customerReturn.productId) {
         let remaining = qty;
         const stocks = await tx.productStock.findMany({
           where: {
@@ -419,10 +384,7 @@ const deleteReturn = async (id: string, accountId: string, userId: string) => {
       data: { isDeleted: true },
     });
 
-    const targetName =
-      customerReturn.product?.name ??
-      customerReturn.preparedProduct?.name ??
-      "";
+    const targetName = customerReturn.product?.name ?? customerReturn.preparedProduct?.name ?? "";
 
     await TrashService.addToTrash({
       moduleName: SystemModule.SALE,

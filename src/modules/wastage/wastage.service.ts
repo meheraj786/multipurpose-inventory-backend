@@ -1,8 +1,4 @@
-import {
-  type Prisma,
-  SystemAction,
-  SystemModule,
-} from "../../generated/prisma/index.js";
+import { type Prisma, SystemAction, SystemModule } from "../../generated/prisma/index.js";
 import prisma from "../../shared/utils/prisma.js";
 import { ActivityLogService } from "../activityLog/activityLog.service.js";
 import { TrashService } from "../trash/trash.service.js";
@@ -21,11 +17,7 @@ type UpdateWastageInput = {
   notes?: string;
 };
 
-const createWastage = async (
-  data: CreateWastageInput,
-  accountId: string,
-  userId: string,
-) => {
+const createWastage = async (data: CreateWastageInput, accountId: string, userId: string) => {
   if (!data.productId && !data.rawProductId && !data.preparedProductId) {
     throw new Error("Specify at least one product asset to record wastage");
   }
@@ -116,9 +108,7 @@ const createWastage = async (
       }
 
       if (remaining > 0) {
-        throw new Error(
-          "Insufficient stock to record prepared product wastage",
-        );
+        throw new Error("Insufficient stock to record prepared product wastage");
       }
     }
 
@@ -140,10 +130,7 @@ const createWastage = async (
     });
 
     const targetName =
-      wastage.product?.name ??
-      wastage.rawProduct?.name ??
-      wastage.preparedProduct?.name ??
-      "";
+      wastage.product?.name ?? wastage.rawProduct?.name ?? wastage.preparedProduct?.name ?? "";
 
     await ActivityLogService.createLog({
       userId,
@@ -157,12 +144,7 @@ const createWastage = async (
   });
 };
 
-const getAllWastages = async (
-  accountId: string,
-  page = 1,
-  limit = 10,
-  search?: string,
-) => {
+const getAllWastages = async (accountId: string, page = 1, limit = 10, search?: string) => {
   const skip = (page - 1) * limit;
 
   const where: Prisma.WastageWhereInput = {
@@ -342,10 +324,7 @@ const deleteWastage = async (id: string, accountId: string, userId: string) => {
     });
 
     const targetName =
-      wastage.product?.name ??
-      wastage.rawProduct?.name ??
-      wastage.preparedProduct?.name ??
-      "";
+      wastage.product?.name ?? wastage.rawProduct?.name ?? wastage.preparedProduct?.name ?? "";
 
     await TrashService.addToTrash({
       moduleName: SystemModule.WASTAGE,
