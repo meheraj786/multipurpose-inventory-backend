@@ -34,6 +34,9 @@ const getSuppliersZodSchema = z.object({
   }),
 });
 
+export type CreateSupplierInput = z.infer<typeof createSupplierZodSchema>["body"];
+export type UpdateSupplierInput = z.infer<typeof updateSupplierZodSchema>["body"];
+
 export const SupplierValidation = {
   createSupplierZodSchema,
   updateSupplierZodSchema,
