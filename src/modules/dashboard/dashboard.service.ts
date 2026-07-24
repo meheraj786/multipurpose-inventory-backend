@@ -7,26 +7,16 @@ import {
 
 type Granularity = "day" | "week" | "month";
 
-const calcItemRevenue = (item: {
-  sellPrice: unknown;
-  quantity: unknown;
-  discount: unknown;
-}) =>
+const calcItemRevenue = (item: { sellPrice: unknown; quantity: unknown; discount: unknown }) =>
   Number(item.sellPrice) * Number(item.quantity) - Number(item.discount ?? 0);
 
 const calcItemCost = (item: { purchasePrice: unknown; quantity: unknown }) =>
   Number(item.purchasePrice) * Number(item.quantity);
 
 const createdAtWhere = (start?: Date, end?: Date) =>
-  start || end
-    ? { createdAt: { ...(start && { gte: start }), ...(end && { lte: end }) } }
-    : {};
+  start || end ? { createdAt: { ...(start && { gte: start }), ...(end && { lte: end }) } } : {};
 
-const getChartGranularity = (
-  range: DateRangePreset,
-  start?: Date,
-  end?: Date,
-): Granularity => {
+const getChartGranularity = (range: DateRangePreset, start?: Date, end?: Date): Granularity => {
   if (range === "year" || range === "all") return "month";
   if (range === "last3months") return "week";
   if (start && end) {
@@ -42,9 +32,7 @@ const bucketKey = (date: Date, granularity: Granularity): string => {
     return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
   }
   if (granularity === "week") {
-    const d = new Date(
-      Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
-    );
+    const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
     const isoDay = d.getUTCDay() || 7;
     d.setUTCDate(d.getUTCDate() - isoDay + 1);
     return d.toISOString().split("T")[0] as string;
@@ -55,9 +43,7 @@ const bucketKey = (date: Date, granularity: Granularity): string => {
 const formatBucketLabel = (key: string, granularity: Granularity): string => {
   if (granularity === "month") {
     const [y, m] = key.split("-").map(Number);
-    return new Date(
-      Date.UTC(y as number, (m as number) - 1, 1),
-    ).toLocaleDateString("en-US", {
+    return new Date(Date.UTC(y as number, (m as number) - 1, 1)).toLocaleDateString("en-US", {
       month: "short",
       year: "numeric",
     });
@@ -71,11 +57,7 @@ const formatBucketLabel = (key: string, granularity: Granularity): string => {
 };
 
 const pctChange = (curr: number, prev: number): number =>
-  prev > 0
-    ? Number((((curr - prev) / prev) * 100).toFixed(2))
-    : curr > 0
-      ? 100
-      : 0;
+  prev > 0 ? Number((((curr - prev) / prev) * 100).toFixed(2)) : curr > 0 ? 100 : 0;
 
 const getSalesOverview = async (
   accountId: string,
@@ -103,24 +85,15 @@ const getSalesOverview = async (
   >();
 
   for (const sale of sales) {
-    const itemsRevenue = sale.saleItems.reduce(
-      (s, i) => s + calcItemRevenue(i),
-      0,
-    );
+    const itemsRevenue = sale.saleItems.reduce((s, i) => s + calcItemRevenue(i), 0);
     const itemsCost = sale.saleItems.reduce((s, i) => s + calcItemCost(i), 0);
-    const servicesRevenue = sale.saleServices.reduce(
-      (s, sv) => s + Number(sv.total),
-      0,
-    );
+    const servicesRevenue = sale.saleServices.reduce((s, sv) => s + Number(sv.total), 0);
     const servicesCost = sale.saleServices.reduce(
       (s, sv) => s + Number(sv.service?.internalCost ?? 0) * sv.quantity,
       0,
     );
 
-    const revenue = Math.max(
-      0,
-      itemsRevenue + servicesRevenue - Number(sale.discount ?? 0),
-    );
+    const revenue = Math.max(0, itemsRevenue + servicesRevenue - Number(sale.discount ?? 0));
     const cost = itemsCost + servicesCost;
 
     totalAmount += revenue;
@@ -148,8 +121,7 @@ const getSalesOverview = async (
       salesCount: v.salesCount,
       amount: Number(v.amount.toFixed(2)),
       profit: Number(v.profit.toFixed(2)),
-      profitMargin:
-        v.amount > 0 ? Number(((v.profit / v.amount) * 100).toFixed(2)) : 0,
+      profitMargin: v.amount > 0 ? Number(((v.profit / v.amount) * 100).toFixed(2)) : 0,
     }));
 
   const totalProfit = totalAmount - totalCost;
@@ -163,10 +135,7 @@ const getSalesOverview = async (
     totalAmount: Number(totalAmount.toFixed(2)),
     totalCost: Number(totalCost.toFixed(2)),
     totalProfit: Number(totalProfit.toFixed(2)),
-    profitMargin:
-      totalAmount > 0
-        ? Number(((totalProfit / totalAmount) * 100).toFixed(2))
-        : 0,
+    profitMargin: totalAmount > 0 ? Number(((totalProfit / totalAmount) * 100).toFixed(2)) : 0,
     chart,
   };
 };
@@ -198,29 +167,18 @@ const computePeriodMetrics = async (
   const customerSet = new Set<string>();
 
   for (const sale of sales) {
-    const itemsRevenue = sale.saleItems.reduce(
-      (s, i) => s + calcItemRevenue(i),
-      0,
-    );
+    const itemsRevenue = sale.saleItems.reduce((s, i) => s + calcItemRevenue(i), 0);
     const itemsCost = sale.saleItems.reduce((s, i) => s + calcItemCost(i), 0);
-    const servicesRevenue = sale.saleServices.reduce(
-      (s, sv) => s + Number(sv.total),
-      0,
-    );
+    const servicesRevenue = sale.saleServices.reduce((s, sv) => s + Number(sv.total), 0);
     const servicesCost = sale.saleServices.reduce(
       (s, sv) => s + Number(sv.service?.internalCost ?? 0) * sv.quantity,
       0,
     );
 
-    revenue += Math.max(
-      0,
-      itemsRevenue + servicesRevenue - Number(sale.discount ?? 0),
-    );
+    revenue += Math.max(0, itemsRevenue + servicesRevenue - Number(sale.discount ?? 0));
     cost += itemsCost + servicesCost;
     dues += Number(sale.due ?? 0);
-    customerSet.add(
-      sale.customerId ?? `walkin:${sale.customerNumber ?? sale.id}`,
-    );
+    customerSet.add(sale.customerId ?? `walkin:${sale.customerNumber ?? sale.id}`);
   }
 
   return {
@@ -251,49 +209,33 @@ const getOverviewStats = async (
     previous = await computePeriodMetrics(accountId, prevStart, prevEnd);
   }
 
-  const currentAov =
-    current.salesCount > 0 ? current.revenue / current.salesCount : 0;
+  const currentAov = current.salesCount > 0 ? current.revenue / current.salesCount : 0;
   const previousAov =
-    previous && previous.salesCount > 0
-      ? previous.revenue / previous.salesCount
-      : 0;
+    previous && previous.salesCount > 0 ? previous.revenue / previous.salesCount : 0;
 
   const currentProfit = current.revenue - current.cost;
   const previousProfit = previous ? previous.revenue - previous.cost : 0;
 
-  const currentMargin =
-    current.revenue > 0 ? (currentProfit / current.revenue) * 100 : 0;
+  const currentMargin = current.revenue > 0 ? (currentProfit / current.revenue) * 100 : 0;
   const previousMargin =
-    previous && previous.revenue > 0
-      ? (previousProfit / previous.revenue) * 100
-      : 0;
+    previous && previous.revenue > 0 ? (previousProfit / previous.revenue) * 100 : 0;
 
   return {
     range,
     startDate: start ?? null,
     endDate: end ?? null,
     totalRevenue: Number(current.revenue.toFixed(2)),
-    revenueChangePercent: previous
-      ? pctChange(current.revenue, previous.revenue)
-      : null,
+    revenueChangePercent: previous ? pctChange(current.revenue, previous.revenue) : null,
     salesCount: current.salesCount,
-    salesCountChangePercent: previous
-      ? pctChange(current.salesCount, previous.salesCount)
-      : null,
+    salesCountChangePercent: previous ? pctChange(current.salesCount, previous.salesCount) : null,
     outstandingDues: Number(current.dues.toFixed(2)),
     duesChangePercent: previous ? pctChange(current.dues, previous.dues) : null,
     avgOrderValue: Number(currentAov.toFixed(2)),
-    avgOrderValueChangePercent: previous
-      ? pctChange(currentAov, previousAov)
-      : null,
+    avgOrderValueChangePercent: previous ? pctChange(currentAov, previousAov) : null,
     totalProfit: Number(currentProfit.toFixed(2)),
-    profitChangePercent: previous
-      ? pctChange(currentProfit, previousProfit)
-      : null,
+    profitChangePercent: previous ? pctChange(currentProfit, previousProfit) : null,
     profitMargin: Number(currentMargin.toFixed(2)),
-    profitMarginChangePercent: previous
-      ? pctChange(currentMargin, previousMargin)
-      : null,
+    profitMarginChangePercent: previous ? pctChange(currentMargin, previousMargin) : null,
     activeCustomers: current.customers,
     totalCustomers: totalCustomersAllTime,
   };
@@ -324,18 +266,9 @@ const getTopCustomers = async (
   const map = new Map<string, Bucket>();
 
   for (const sale of sales) {
-    const itemsRevenue = sale.saleItems.reduce(
-      (s, i) => s + calcItemRevenue(i),
-      0,
-    );
-    const servicesRevenue = sale.saleServices.reduce(
-      (s, sv) => s + Number(sv.total),
-      0,
-    );
-    const revenue = Math.max(
-      0,
-      itemsRevenue + servicesRevenue - Number(sale.discount ?? 0),
-    );
+    const itemsRevenue = sale.saleItems.reduce((s, i) => s + calcItemRevenue(i), 0);
+    const servicesRevenue = sale.saleServices.reduce((s, sv) => s + Number(sv.total), 0);
+    const revenue = Math.max(0, itemsRevenue + servicesRevenue - Number(sale.discount ?? 0));
 
     const key = sale.customerId ?? `walkin:${sale.customerNumber ?? "unknown"}`;
     const bucket =
@@ -464,12 +397,9 @@ const getCategoryRanking = async (
 
   for (const sale of sales) {
     for (const item of sale.saleItems) {
-      const categoryId =
-        item.product?.categoryId ?? item.preparedProduct?.categoryId ?? null;
+      const categoryId = item.product?.categoryId ?? item.preparedProduct?.categoryId ?? null;
       const subCategoryId =
-        item.product?.subCategoryId ??
-        item.preparedProduct?.subCategoryId ??
-        null;
+        item.product?.subCategoryId ?? item.preparedProduct?.subCategoryId ?? null;
       const revenue = calcItemRevenue(item);
       const quantity = Number(item.quantity);
       bump(categoryAgg, categoryId, categoryNames, quantity, revenue);
@@ -481,13 +411,7 @@ const getCategoryRanking = async (
       const subCategoryId = sv.service?.subCategoryId ?? null;
       const revenue = Number(sv.total);
       bump(categoryAgg, categoryId, categoryNames, sv.quantity, revenue);
-      bump(
-        subCategoryAgg,
-        subCategoryId,
-        subCategoryNames,
-        sv.quantity,
-        revenue,
-      );
+      bump(subCategoryAgg, subCategoryId, subCategoryNames, sv.quantity, revenue);
     }
   }
 
@@ -531,10 +455,7 @@ const getLowStockAlert = async (accountId: string) => {
 
   const lowStockProducts = products
     .map((p) => {
-      const currentStock = p.productStocks.reduce(
-        (s, ps) => s + Number(ps.quantity),
-        0,
-      );
+      const currentStock = p.productStocks.reduce((s, ps) => s + Number(ps.quantity), 0);
       const threshold = p.lowStockAlert ? Number(p.lowStockAlert) : null;
       return {
         id: p.id,
@@ -631,10 +552,7 @@ const getProductRanking = async (
         bucket.quantity += quantity;
         bucket.revenue += revenue;
         productAgg.set(item.productId, bucket);
-      } else if (
-        item.itemType === "PREPARED_PRODUCT" &&
-        item.preparedProductId
-      ) {
+      } else if (item.itemType === "PREPARED_PRODUCT" && item.preparedProductId) {
         const bucket = preparedAgg.get(item.preparedProductId) ?? {
           preparedProductId: item.preparedProductId,
           name: item.preparedProduct?.name ?? "Unknown Prepared Product",
@@ -758,10 +676,7 @@ const getPurchaseOverview = async (
   let totalCost = 0;
   let totalQuantity = 0;
 
-  const chartMap = new Map<
-    string,
-    { purchases: number; quantity: number; cost: number }
-  >();
+  const chartMap = new Map<string, { purchases: number; quantity: number; cost: number }>();
 
   for (const purchase of purchases) {
     totalCost += Number(purchase.totalCost);
