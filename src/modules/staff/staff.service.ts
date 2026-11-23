@@ -7,11 +7,13 @@ import {
 } from "../../generated/prisma/index.js";
 import prisma from "../../shared/utils/prisma.js";
 import { ActivityLogService } from "../activityLog/activityLog.service.js";
-import type {
-  CreateStaffInput,
-  UpdateStaffInput,
-  UpdatePermissionsInput,
-} from "./staff.validation.js";
+import type { CreateStaffInput, UpdateStaffInput } from "./staff.validation.js";
+
+const ensureRoleBelongsToAccount = async (roleId: string | null | undefined, accountId: string) => {
+  if (!roleId) return;
+  const role = await prisma.role.findFirst({ where: { id: roleId, accountId } });
+  if (!role) throw new Error("Role not found");
+};
 
 const createStaff = async (
   data: CreateStaffInput,
@@ -28,19 +30,19 @@ const createStaff = async (
 
   if (!account) throw new Error("Account not found");
 
-  if (account.pricingPlan?.userLimit !== null) {
+  const userLimit = account.pricingPlan?.userLimit;
+  if (userLimit !== null && userLimit !== undefined) {
     const currentStaffCount = await prisma.user.count({
       where: { accountId, role: "STAFF", isDeleted: false },
     });
 
-    if (currentStaffCount >= (account.pricingPlan?.userLimit ?? 0)) {
-      throw new Error(
-        `Your plan allows a maximum of ${account.pricingPlan?.userLimit} staff members`,
-      );
+    if (currentStaffCount >= userLimit) {
+      throw new Error(`Your plan allows a maximum of ${userLimit} staff members`);
     }
   }
 
   const hashedPassword = await bcrypt.hash(data.password, 12);
+  await ensureRoleBelongsToAccount(data.customRoleId, accountId);
 
   const staff = await prisma.user.create({
     data: {
@@ -49,6 +51,7 @@ const createStaff = async (
       password: hashedPassword,
       accountId,
       role: "STAFF",
+      customRoleId: data.customRoleId ?? null,
     },
     omit: { password: true },
   });
@@ -88,7 +91,11 @@ const getAllStaff = async (
       take: limit,
       orderBy: { createdAt: "desc" },
       omit: { password: true },
-      include: { permissions: true },
+      include: {
+        customRole: {
+          include: { permissions: { orderBy: { module: "asc" } } },
+        },
+      },
     }),
     prisma.user.count({ where }),
   ]);
@@ -108,7 +115,11 @@ const getSingleStaff = async (id: string, accountId: string) => {
   const staff = await prisma.user.findFirst({
     where: { id, accountId, role: "STAFF", isDeleted: false },
     omit: { password: true },
-    include: { permissions: true },
+    include: {
+      customRole: {
+        include: { permissions: { orderBy: { module: "asc" } } },
+      },
+    },
   });
 
   if (!staff) throw new Error("Staff member not found");
@@ -127,10 +138,15 @@ const updateStaff = async (
 
   if (!staff) throw new Error("Staff member not found");
 
-  const updateData: Prisma.UserUpdateInput = { ...data };
+  const { customRoleId, ...staffData } = data;
+  const updateData: Prisma.UserUpdateInput = { ...staffData };
 
   if (data.password) {
     updateData.password = await bcrypt.hash(data.password, 12);
+  }
+  if (customRoleId !== undefined) {
+    await ensureRoleBelongsToAccount(customRoleId, accountId);
+    updateData.customRole = customRoleId ? { connect: { id: customRoleId } } : { disconnect: true };
   }
 
   const updated = await prisma.user.update({
@@ -173,52 +189,10 @@ const deleteStaff = async (id: string, accountId: string, adminUserId: string) =
 
   return result;
 };
-const updatePermissions = async (
-  staffId: string,
-  accountId: string,
-  data: UpdatePermissionsInput,
-  adminUserId: string,
-) => {
-  const staff = await prisma.user.findFirst({
-    where: { id: staffId, accountId, role: "STAFF", isDeleted: false },
-  });
-
-  if (!staff) throw new Error("Staff member not found");
-
-  const result = await prisma.$transaction(async (tx) => {
-    await tx.permission.deleteMany({
-      where: { userId: staffId },
-    });
-
-    if (data.permissions.length > 0) {
-      return await tx.permission.createMany({
-        data: data.permissions.map((p) => ({
-          userId: staffId,
-          accountId: accountId,
-          module: p.module,
-          actions: p.actions,
-        })),
-      });
-    }
-    return { count: 0 };
-  });
-
-  await ActivityLogService.createLog({
-    userId: adminUserId,
-    module: SystemModule.STAFF,
-    action: SystemAction.UPDATE,
-    details: `Updated permissions for staff: ${staff.email}`,
-    accountId,
-  });
-
-  return result;
-};
-
 export const StaffService = {
   createStaff,
   getAllStaff,
   getSingleStaff,
   updateStaff,
   deleteStaff,
-  updatePermissions,
 };

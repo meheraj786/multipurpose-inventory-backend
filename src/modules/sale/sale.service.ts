@@ -36,6 +36,7 @@ const getServiceProfit = (sv: {
 
 const getReturnedProfitAdjustment = (sale: {
   saleItems: Array<{
+    id: string;
     quantity: Prisma.Decimal | number;
     sellPrice: Prisma.Decimal | number;
     purchasePrice: Prisma.Decimal | number;
@@ -45,37 +46,69 @@ const getReturnedProfitAdjustment = (sale: {
     preparedProductId?: string | null;
   }>;
   customerReturns?: Array<{
+    saleItemId?: string | null;
     itemType: string;
     productId?: string | null;
     preparedProductId?: string | null;
     quantity: Prisma.Decimal | number;
     refundAmount?: Prisma.Decimal | number | null;
+    stockAllocations?: Array<{
+      quantity: Prisma.Decimal | number;
+      unitCost: Prisma.Decimal | number;
+    }>;
   }> | null;
 }) => {
-  return sale.saleItems.reduce((sum, item) => {
-    const quantity = Number(item.quantity ?? 0);
-    if (quantity <= 0) return sum;
+  const saleItemsById = new Map(sale.saleItems.map((item) => [item.id, item]));
+  const returnedBySaleItem = new Map<string, number>();
+  let adjustment = 0;
 
-    const lineProfit =
-      Number(item.sellPrice ?? 0) * quantity -
-      Number(item.purchasePrice ?? 0) * quantity -
-      Number(item.discount ?? 0);
+  for (const returnItem of sale.customerReturns ?? []) {
+    if (!returnItem.saleItemId) continue;
+    const saleItem = saleItemsById.get(returnItem.saleItemId);
+    if (!saleItem) continue;
 
-    const returnedQuantity = (sale.customerReturns ?? []).reduce((returnQty, returnItem) => {
+    const quantity = Number(returnItem.quantity ?? 0);
+    const cost =
+      returnItem.stockAllocations && returnItem.stockAllocations.length > 0
+        ? returnItem.stockAllocations.reduce(
+            (sum, allocation) => sum + Number(allocation.quantity) * Number(allocation.unitCost),
+            0,
+          )
+        : Number(saleItem.purchasePrice) * quantity;
+    const refund = Number(returnItem.refundAmount ?? 0);
+    adjustment += refund - cost;
+    returnedBySaleItem.set(saleItem.id, (returnedBySaleItem.get(saleItem.id) ?? 0) + quantity);
+  }
+
+  for (const returnItem of sale.customerReturns ?? []) {
+    if (returnItem.saleItemId) continue;
+    let remaining = Number(returnItem.quantity ?? 0);
+    const originalQuantity = remaining;
+    for (const saleItem of sale.saleItems) {
       if (
-        returnItem.itemType !== item.itemType ||
-        returnItem.productId !== item.productId ||
-        returnItem.preparedProductId !== item.preparedProductId
+        saleItem.itemType !== returnItem.itemType ||
+        saleItem.productId !== returnItem.productId ||
+        saleItem.preparedProductId !== returnItem.preparedProductId
       ) {
-        return returnQty;
+        continue;
       }
 
-      return returnQty + Number(returnItem.quantity ?? 0);
-    }, 0);
+      const alreadyReturned = returnedBySaleItem.get(saleItem.id) ?? 0;
+      const available = Math.max(0, Number(saleItem.quantity) - alreadyReturned);
+      const quantity = Math.min(remaining, available);
+      if (quantity <= 0) continue;
 
-    if (returnedQuantity <= 0) return sum;
-    return sum + (lineProfit / quantity) * returnedQuantity;
-  }, 0);
+      const refund =
+        Number(returnItem.refundAmount ?? 0) *
+        (originalQuantity > 0 ? quantity / originalQuantity : 0);
+      adjustment += refund - Number(saleItem.purchasePrice) * quantity;
+      returnedBySaleItem.set(saleItem.id, alreadyReturned + quantity);
+      remaining -= quantity;
+      if (remaining <= 0) break;
+    }
+  }
+
+  return adjustment;
 };
 
 const createSale = async (data: CreateSaleInput, accountId: string, userId: string) => {
@@ -103,9 +136,9 @@ const createSale = async (data: CreateSaleInput, accountId: string, userId: stri
         quantity: item.quantity,
       }));
 
-      const stockCosts = await deductSaleItemsStock(tx, stockItems, accountId);
+      const stockDeduction = await deductSaleItemsStock(tx, stockItems, accountId);
 
-      for (const item of data.saleItems) {
+      for (const [itemIndex, item] of data.saleItems.entries()) {
         if (item.itemType === "PREPARED_PRODUCT") {
           if (!item.preparedProductId) {
             throw new Error("preparedProductId is required for PREPARED_PRODUCT items");
@@ -120,7 +153,7 @@ const createSale = async (data: CreateSaleInput, accountId: string, userId: stri
 
           const unitId = item.unitId ?? preparedProduct.unitId;
           const purchasePrice =
-            stockCosts[item.preparedProductId] ?? Number(preparedProduct.rawMaterialCost ?? 0);
+            stockDeduction.unitCosts[itemIndex] ?? Number(preparedProduct.rawMaterialCost ?? 0);
 
           await tx.saleItem.create({
             data: {
@@ -147,9 +180,9 @@ const createSale = async (data: CreateSaleInput, accountId: string, userId: stri
           if (!product) throw new Error(`Product not found: ${item.productId}`);
 
           const unitId = item.unitId ?? product.unitId;
-          const purchasePrice = stockCosts[item.productId] ?? 0;
+          const purchasePrice = stockDeduction.unitCosts[itemIndex] ?? 0;
 
-          await tx.saleItem.create({
+          const saleItem = await tx.saleItem.create({
             data: {
               saleId: sale.id,
               itemType: "PRODUCT",
@@ -163,6 +196,16 @@ const createSale = async (data: CreateSaleInput, accountId: string, userId: stri
               accountId,
             },
           });
+
+          const allocations = stockDeduction.productAllocations
+            .filter((allocation) => allocation.itemIndex === itemIndex)
+            .map(({ itemIndex: _itemIndex, ...allocation }) => ({
+              saleItemId: saleItem.id,
+              ...allocation,
+            }));
+          if (allocations.length) {
+            await tx.saleItemStockAllocation.createMany({ data: allocations });
+          }
         }
       }
     }
@@ -252,7 +295,13 @@ const getAllSales = async (
         saleItems: { include: { product: true, preparedProduct: true } },
         saleServices: { include: { service: true } },
         invoices: true,
-        customerReturns: { include: { product: true, preparedProduct: true } },
+        customerReturns: {
+          include: {
+            product: true,
+            preparedProduct: true,
+            stockAllocations: true,
+          },
+        },
       },
     }),
     prisma.sale.count({ where }),
@@ -303,7 +352,13 @@ const getSingleSale = async (id: string, accountId: string) => {
       saleItems: { include: { product: true, preparedProduct: true } },
       saleServices: { include: { service: true } },
       invoices: true,
-      customerReturns: { include: { product: true, preparedProduct: true } },
+      customerReturns: {
+        include: {
+          product: true,
+          preparedProduct: true,
+          stockAllocations: true,
+        },
+      },
     },
   });
 
@@ -431,9 +486,18 @@ const deleteSale = async (id: string, accountId: string, userId: string) => {
   return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const sale = await tx.sale.findFirst({
       where: { id, accountId, isDeleted: false },
-      include: { saleItems: true },
+      include: {
+        saleItems: { include: { stockAllocations: true } },
+        customerReturns: {
+          where: { isDeleted: false },
+          select: { id: true },
+        },
+      },
     });
     if (!sale) throw new Error("Sale not found");
+    if (sale.customerReturns.length > 0) {
+      throw new Error("Delete the active customer returns before deleting this sale");
+    }
 
     await readdSaleItemsStock(tx, sale.saleItems as SaleStockItem[], accountId);
 
@@ -466,7 +530,7 @@ const restoreSale = async (id: string, accountId: string, userId: string) => {
   return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const sale = await tx.sale.findFirst({
       where: { id, accountId, isDeleted: true },
-      include: { saleItems: true },
+      include: { saleItems: { include: { stockAllocations: true } } },
     });
     if (!sale) throw new Error("Sale not found in trash");
 

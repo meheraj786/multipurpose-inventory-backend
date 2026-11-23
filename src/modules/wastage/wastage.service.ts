@@ -1,6 +1,10 @@
 import { type Prisma, SystemAction, SystemModule } from "../../generated/prisma/index.js";
 import prisma from "../../shared/utils/prisma.js";
 import { ActivityLogService } from "../activityLog/activityLog.service.js";
+import {
+  consumeProductStock,
+  restoreProductStockAllocations,
+} from "../product/product-stock.util.js";
 import { TrashService } from "../trash/trash.service.js";
 
 type CreateWastageInput = {
@@ -26,31 +30,11 @@ const createWastage = async (data: CreateWastageInput, accountId: string, userId
   if (quantity <= 0) throw new Error("Wastage quantity must be greater than 0");
 
   return await prisma.$transaction(async (tx) => {
+    let productStockAllocations: Awaited<ReturnType<typeof consumeProductStock>>["allocations"] =
+      [];
     if (data.productId) {
-      let remaining = quantity;
-      const stocks = await tx.productStock.findMany({
-        where: {
-          productId: data.productId,
-          accountId,
-          isDeleted: false,
-          quantity: { gt: 0 },
-        },
-        orderBy: { createdAt: "asc" },
-      });
-
-      for (const stock of stocks) {
-        if (remaining <= 0) break;
-        const deduct = Math.min(remaining, Number(stock.quantity));
-        await tx.productStock.update({
-          where: { id: stock.id },
-          data: { quantity: { decrement: deduct } },
-        });
-        remaining -= deduct;
-      }
-
-      if (remaining > 0) {
-        throw new Error("Insufficient stock to record product wastage");
-      }
+      const consumption = await consumeProductStock(tx, data.productId, accountId, quantity);
+      productStockAllocations = consumption.allocations;
     } else if (data.rawProductId) {
       const rawProduct = await tx.rawProduct.findFirst({
         where: { id: data.rawProductId, accountId, isDeleted: false },
@@ -128,6 +112,18 @@ const createWastage = async (data: CreateWastageInput, accountId: string, userId
         preparedProduct: true,
       },
     });
+    if (wastage.productId && productStockAllocations.length > 0) {
+      await tx.wastageStockAllocation.createMany({
+        data: productStockAllocations.map(
+          ({ productStockId, quantity: allocatedQuantity, unitCost }) => ({
+            wastageId: wastage.id,
+            productStockId,
+            quantity: allocatedQuantity,
+            unitCost,
+          }),
+        ),
+      });
+    }
 
     const targetName =
       wastage.product?.name ?? wastage.rawProduct?.name ?? wastage.preparedProduct?.name ?? "";
@@ -231,39 +227,43 @@ const deleteWastage = async (id: string, accountId: string, userId: string) => {
   return await prisma.$transaction(async (tx) => {
     const wastage = await tx.wastage.findFirst({
       where: { id, accountId, isDeleted: false },
-      include: { product: true, rawProduct: true, preparedProduct: true },
+      include: {
+        product: true,
+        rawProduct: true,
+        preparedProduct: true,
+        productStockAllocations: true,
+      },
     });
     if (!wastage) throw new Error("Wastage record not found");
 
     const qty = Number(wastage.quantity);
 
     if (wastage.productId) {
-      const stock = await tx.productStock.findFirst({
-        where: { productId: wastage.productId, accountId, isDeleted: false },
-        orderBy: { createdAt: "desc" },
-      });
-      if (stock) {
-        await tx.productStock.update({
-          where: { id: stock.id },
-          data: { quantity: { increment: qty } },
-        });
+      if (wastage.productStockAllocations.length > 0) {
+        await restoreProductStockAllocations(
+          tx,
+          accountId,
+          wastage.productStockAllocations.map((allocation) => ({
+            productStockId: allocation.productStockId,
+            quantity: Number(allocation.quantity),
+            unitCost: Number(allocation.unitCost),
+          })),
+        );
       } else {
-        const product = await tx.product.findUnique({
-          where: { id: wastage.productId },
+        const product = wastage.product;
+        if (!product) throw new Error("Product not found for wastage record");
+        const purchasePrice = Number(product.defaultPurchasePrice ?? 0);
+        await tx.productStock.create({
+          data: {
+            productId: wastage.productId,
+            unitId: product.unitId,
+            quantity: qty,
+            purchasePrice,
+            rate: 0,
+            totalCost: qty * purchasePrice,
+            accountId,
+          },
         });
-        if (product) {
-          await tx.productStock.create({
-            data: {
-              productId: wastage.productId,
-              unitId: product.unitId,
-              quantity: qty,
-              purchasePrice: 0,
-              rate: 0,
-              totalCost: 0,
-              accountId,
-            },
-          });
-        }
       }
     } else if (wastage.rawProductId) {
       await tx.rawProduct.update({

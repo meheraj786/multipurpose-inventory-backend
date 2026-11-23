@@ -32,10 +32,20 @@ const createPurchases = async (data: CreatePurchaseInput, accountId: string, use
     const created: { purchase: Purchase; stock: ProductStock }[] = [];
 
     for (const item of data.items) {
-      const product = await tx.product.findUnique({ where: { id: item.productId } });
+      const product = await tx.product.findFirst({
+        where: { id: item.productId, accountId, isDeleted: false },
+        include: { unit: true },
+      });
       if (!product) throw new Error(`Product not found: ${item.productId}`);
 
       const unitId = item.unitId ?? product.unitId;
+      const stockUnit = await tx.unit.findUnique({ where: { id: unitId } });
+      if (!stockUnit) throw new Error("Stock unit not found");
+      if (stockUnit.group !== product.unit.group) {
+        throw new Error(
+          `Unit mismatch: cannot stock ${product.name} in ${stockUnit.symbol}. Expected a ${product.unit.group} unit.`,
+        );
+      }
       const totalCost = Number(item.quantity) * Number(item.purchasePrice);
 
       const purchase = await tx.purchase.create({
@@ -168,6 +178,7 @@ const updatePurchase = async (
 
     const updatedQty = data.qty ?? Number(purchase.qty);
     const updatedPrice = data.purchasePrice ?? Number(purchase.purchasePrice);
+    const updatedRate = data.rate ?? Number(purchase.rate);
     const totalCost = updatedQty * updatedPrice;
     let supplierId = data.supplierId === undefined ? purchase.supplierId : data.supplierId;
     if (supplierId === "") supplierId = null;
@@ -181,12 +192,44 @@ const updatePurchase = async (
     }
     const due = totalCost - paidAmount;
 
+    const stockEntries = await tx.productStock.findMany({
+      where: { purchaseId: id, accountId },
+    });
+    if (stockEntries.length > 1) {
+      throw new Error("Cannot edit a purchase linked to multiple stock batches");
+    }
+
+    const stock = stockEntries[0];
+    let stockHasConsumptionHistory = false;
+    if (stock) {
+      const [saleAllocations, wastageAllocations, returnAllocations] = await Promise.all([
+        tx.saleItemStockAllocation.count({ where: { productStockId: stock.id } }),
+        tx.wastageStockAllocation.count({ where: { productStockId: stock.id } }),
+        tx.customerReturnStockAllocation.count({ where: { productStockId: stock.id } }),
+      ]);
+      stockHasConsumptionHistory =
+        Number(stock.quantity) < Number(purchase.qty) ||
+        saleAllocations > 0 ||
+        wastageAllocations > 0 ||
+        returnAllocations > 0;
+      const inventoryTermsChanged =
+        updatedQty !== Number(purchase.qty) ||
+        updatedPrice !== Number(purchase.purchasePrice) ||
+        updatedRate !== Number(purchase.rate);
+
+      if (stockHasConsumptionHistory && inventoryTermsChanged) {
+        throw new Error(
+          "Cannot change quantity or pricing after this batch has stock movement history. Reverse the related sales, returns, or wastage first.",
+        );
+      }
+    }
+
     const result = await tx.purchase.update({
       where: { id },
       data: {
         qty: updatedQty,
         purchasePrice: updatedPrice,
-        rate: data.rate ?? purchase.rate,
+        rate: updatedRate,
         totalCost,
         due,
         paymentStatus: resolveStatus(due),
@@ -195,16 +238,29 @@ const updatePurchase = async (
       },
     });
 
-    await tx.productStock.updateMany({
-      where: { purchaseId: id, accountId },
-      data: {
-        quantity: updatedQty,
-        purchasePrice: updatedPrice,
-        rate: data.rate ?? purchase.rate,
-        totalCost,
-        supplierId,
-      },
-    });
+    if (stock) {
+      const updatedStock = await tx.productStock.updateMany({
+        where: {
+          id: stock.id,
+          accountId,
+          isDeleted: stock.isDeleted,
+          quantity: stock.quantity,
+          purchasePrice: stock.purchasePrice,
+        },
+        data: {
+          ...(!stockHasConsumptionHistory && {
+            quantity: updatedQty,
+            purchasePrice: updatedPrice,
+            rate: updatedRate,
+            totalCost,
+          }),
+          supplierId,
+        },
+      });
+      if (updatedStock.count !== 1) {
+        throw new Error("Stock changed while editing purchase. Please retry.");
+      }
+    }
 
     await ActivityLogService.createLog({
       userId,
@@ -235,6 +291,16 @@ const deletePurchase = async (id: string, accountId: string, userId: string) => 
 
     for (const stock of purchase.productStocks) {
       if (stock.isDeleted) continue;
+      const [saleAllocations, wastageAllocations, returnAllocations] = await Promise.all([
+        tx.saleItemStockAllocation.count({ where: { productStockId: stock.id } }),
+        tx.wastageStockAllocation.count({ where: { productStockId: stock.id } }),
+        tx.customerReturnStockAllocation.count({ where: { productStockId: stock.id } }),
+      ]);
+      if (saleAllocations > 0 || wastageAllocations > 0 || returnAllocations > 0) {
+        throw new Error(
+          "Cannot delete a purchase batch that has FIFO stock history. Reverse its sales, returns, or wastage first.",
+        );
+      }
       const original = Number(purchase.qty);
       const current = Number(stock.quantity);
       if (current < original) {
