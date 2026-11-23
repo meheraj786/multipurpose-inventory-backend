@@ -18,6 +18,8 @@ router.post(
 
 router.get("/", checkPermission("PRODUCT"), ProductController.getAllProducts);
 
+router.get("/barcode/:barcode", checkPermission("PRODUCT"), ProductController.getProductByBarcode);
+
 router.get("/:id", checkPermission("PRODUCT"), ProductController.getSingleProduct);
 
 router.patch(

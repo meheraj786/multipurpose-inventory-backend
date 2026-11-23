@@ -98,30 +98,10 @@ const deleteStaff = async (req: Request, res: Response, next: NextFunction) => {
   }
 };
 
-const updatePermissions = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const id = req.params.id as string;
-    const accountId = req.user?.accountId as string;
-    const adminUserId = req.user?.userId as string;
-
-    const result = await StaffService.updatePermissions(id, accountId, req.body, adminUserId);
-
-    sendResponse(res, {
-      statusCode: httpStatus.OK,
-      success: true,
-      message: "Permissions updated successfully",
-      data: result,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
 export const StaffController = {
   createStaff,
   getAllStaff,
   getSingleStaff,
   updateStaff,
   deleteStaff,
-  updatePermissions,
 };

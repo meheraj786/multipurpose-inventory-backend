@@ -40,7 +40,10 @@ const register = async (data: RegisterInput) => {
 const login = async (data: LoginInput) => {
   const user = await prisma.user.findUnique({
     where: { email: data.email, isDeleted: false },
-    include: { account: true, permissions: true },
+    include: {
+      account: true,
+      customRole: { include: { permissions: true } },
+    },
   });
 
   if (!user) throw new Error("Invalid email or password");
@@ -62,7 +65,16 @@ const login = async (data: LoginInput) => {
   const accessToken = generateAccessToken(payload);
   const refreshToken = generateRefreshToken(payload);
 
-  return { accessToken, refreshToken, user: { ...payload, account: user.account } };
+  return {
+    accessToken,
+    refreshToken,
+    user: {
+      ...payload,
+      account: user.account,
+      customRole: user.customRole ? { id: user.customRole.id, name: user.customRole.name } : null,
+      permissions: user.customRole?.permissions ?? [],
+    },
+  };
 };
 
 const refreshToken = async (token: string) => {
@@ -89,11 +101,20 @@ const refreshToken = async (token: string) => {
 };
 
 const getMe = async (userId: string) => {
-  return await prisma.user.findUnique({
+  const user = await prisma.user.findUnique({
     where: { id: userId, isDeleted: false },
-    include: { account: true, permissions: true },
+    include: {
+      account: true,
+      customRole: { include: { permissions: true } },
+    },
     omit: { password: true },
   });
+  if (!user) return null;
+
+  return {
+    ...user,
+    permissions: user.customRole?.permissions ?? [],
+  };
 };
 
 export const AuthService = {

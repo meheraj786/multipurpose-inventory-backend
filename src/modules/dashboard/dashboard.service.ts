@@ -437,7 +437,11 @@ const getCategoryRanking = async (
   };
 };
 
-const getLowStockAlert = async (accountId: string) => {
+const getLowStockAlert = async (
+  accountId: string,
+  includeProducts = true,
+  includeRawProducts = true,
+) => {
   const [products, rawProducts] = await Promise.all([
     prisma.product.findMany({
       where: { accountId, isDeleted: false },
@@ -492,7 +496,10 @@ const getLowStockAlert = async (accountId: string) => {
     )
     .sort((a, b) => a.currentStock - b.currentStock);
 
-  return { products: lowStockProducts, rawProducts: lowStockRawProducts };
+  return {
+    products: includeProducts ? lowStockProducts : [],
+    rawProducts: includeRawProducts ? lowStockRawProducts : [],
+  };
 };
 
 const getProductRanking = async (

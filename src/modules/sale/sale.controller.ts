@@ -15,7 +15,8 @@ const createSale = async (req: Request, res: Response, next: NextFunction) => {
     let total = 0;
     if (sale.saleItems?.length) {
       total += sale.saleItems.reduce(
-        (sum, item) => sum + Number(item.sellPrice) * item.quantity - Number(item.discount ?? 0),
+        (sum, item) =>
+          sum + Number(item.sellPrice) * Number(item.quantity) - Number(item.discount ?? 0),
         0,
       );
     }

@@ -1,6 +1,12 @@
 import { type Prisma, SystemAction, SystemModule } from "../../generated/prisma/index.js";
 import prisma from "../../shared/utils/prisma.js";
 import { ActivityLogService } from "../activityLog/activityLog.service.js";
+import {
+  consumeProductStock,
+  removeProductStockAllocations,
+  restoreProductStockAllocations,
+  type ProductStockAllocationInput,
+} from "../product/product-stock.util.js";
 import { TrashService } from "../trash/trash.service.js";
 
 type ReturnItemInput = {
@@ -21,12 +27,6 @@ type UpdateCustomerReturnInput = {
   reason?: string;
 };
 
-const itemKey = (
-  itemType: "PRODUCT" | "PREPARED_PRODUCT",
-  productId?: string | null,
-  preparedProductId?: string | null,
-) => (itemType === "PRODUCT" ? `PRODUCT:${productId}` : `PREPARED_PRODUCT:${preparedProductId}`);
-
 const createCustomerReturn = async (
   data: CreateCustomerReturnInput,
   accountId: string,
@@ -37,66 +37,120 @@ const createCustomerReturn = async (
   return await prisma.$transaction(async (tx) => {
     const sale = await tx.sale.findFirst({
       where: { id: data.saleId, accountId, isDeleted: false },
-      include: { saleItems: true },
+      include: {
+        saleItems: {
+          include: { stockAllocations: { orderBy: { createdAt: "desc" } } },
+        },
+      },
     });
 
     if (!sale) throw new Error("Sale transaction records not found");
 
     const existingReturns = await tx.customerReturn.findMany({
       where: { saleId: data.saleId, accountId, isDeleted: false },
+      include: { stockAllocations: true },
     });
 
-    const alreadyReturnedMap = new Map<string, number>();
-    for (const r of existingReturns) {
-      const key = itemKey(
-        r.itemType as "PRODUCT" | "PREPARED_PRODUCT",
-        r.productId,
-        r.preparedProductId,
+    const returnedBySaleItem = new Map<string, number>();
+    const returnedByBatch = new Map<string, number>();
+    const legacyReturns = existingReturns.filter((r) => !r.saleItemId);
+    for (const returnRecord of existingReturns) {
+      if (returnRecord.saleItemId) {
+        returnedBySaleItem.set(
+          returnRecord.saleItemId,
+          (returnedBySaleItem.get(returnRecord.saleItemId) ?? 0) + Number(returnRecord.quantity),
+        );
+      }
+      for (const allocation of returnRecord.stockAllocations) {
+        returnedByBatch.set(
+          `${returnRecord.saleItemId}:${allocation.productStockId}`,
+          (returnedByBatch.get(`${returnRecord.saleItemId}:${allocation.productStockId}`) ?? 0) +
+            Number(allocation.quantity),
+        );
+      }
+    }
+
+    for (const returnRecord of legacyReturns) {
+      const candidates = sale.saleItems.filter(
+        (saleItem) =>
+          saleItem.itemType === returnRecord.itemType &&
+          saleItem.productId === returnRecord.productId &&
+          saleItem.preparedProductId === returnRecord.preparedProductId,
       );
-      alreadyReturnedMap.set(key, (alreadyReturnedMap.get(key) ?? 0) + Number(r.quantity));
+      let remaining = Number(returnRecord.quantity);
+      for (const saleItem of candidates) {
+        if (remaining <= 0) break;
+        const alreadyReturned = returnedBySaleItem.get(saleItem.id) ?? 0;
+        const available = Math.max(0, Number(saleItem.quantity) - alreadyReturned);
+        const allocated = Math.min(remaining, available);
+        returnedBySaleItem.set(saleItem.id, alreadyReturned + allocated);
+        remaining -= allocated;
+      }
     }
 
     let totalRefundValue = 0;
-    const returnRecordsToCreate: (Prisma.CustomerReturnCreateManyInput & {
-      refundAmount: number;
-    })[] = [];
+    const createdReturns: Array<{ id: string; refundAmount: number }> = [];
 
     for (const item of data.items) {
       const quantity = Number(item.quantity);
       if (quantity <= 0) throw new Error("Return quantity must be greater than 0");
 
-      const matchedItem = sale.saleItems.find((sItem) => {
-        if (item.itemType === "PRODUCT") {
-          return sItem.itemType === "PRODUCT" && sItem.productId === item.productId;
-        }
-        return (
-          sItem.itemType === "PREPARED_PRODUCT" &&
-          sItem.preparedProductId === item.preparedProductId
-        );
-      });
-
-      if (!matchedItem) {
+      const candidates = sale.saleItems.filter(
+        (saleItem) =>
+          saleItem.itemType === item.itemType &&
+          saleItem.productId === (item.productId ?? null) &&
+          saleItem.preparedProductId === (item.preparedProductId ?? null),
+      );
+      if (candidates.length === 0) {
         throw new Error(
           "One or more returned items were not found inside the designated sale details",
         );
       }
 
-      const key = itemKey(item.itemType, item.productId, item.preparedProductId);
-      const alreadyReturned = alreadyReturnedMap.get(key) ?? 0;
-      const availableToReturn = Number(matchedItem.quantity) - alreadyReturned;
-
-      if (quantity > availableToReturn) {
+      const availableToReturn = candidates.reduce(
+        (sum, candidate) =>
+          sum +
+          Math.max(0, Number(candidate.quantity) - (returnedBySaleItem.get(candidate.id) ?? 0)),
+        0,
+      );
+      if (quantity > availableToReturn + 1e-9) {
         throw new Error(
-          `Cannot return ${quantity} unit(s) for ${item.productId || item.preparedProductId}. Only ${Math.max(0, availableToReturn)} unit(s) remain returnable (already returned: ${alreadyReturned}).`,
+          `Cannot return ${quantity} unit(s) for ${item.productId || item.preparedProductId}. Only ${availableToReturn} unit(s) remain returnable.`,
         );
       }
 
-      alreadyReturnedMap.set(key, alreadyReturned + quantity);
+      let remaining = quantity;
+      for (const matchedItem of candidates) {
+        if (remaining <= 0) break;
+        const alreadyReturned = returnedBySaleItem.get(matchedItem.id) ?? 0;
+        const available = Math.max(0, Number(matchedItem.quantity) - alreadyReturned);
+        const returnedQuantity = Math.min(remaining, available);
+        if (returnedQuantity <= 0) continue;
 
-      const itemRefundValue = Number(matchedItem.sellPrice) * quantity;
-      totalRefundValue += itemRefundValue;
+        const itemRefundValue = Number(matchedItem.sellPrice) * returnedQuantity;
+        totalRefundValue += itemRefundValue;
+        const returnRecord = await tx.customerReturn.create({
+          data: {
+            saleId: data.saleId,
+            saleItemId: matchedItem.id,
+            itemType: item.itemType,
+            productId: item.productId || null,
+            preparedProductId: item.preparedProductId || null,
+            quantity: returnedQuantity,
+            refundAmount: itemRefundValue,
+            excessRefundAmount: 0,
+            requiresManualRefund: false,
+            restocked: restock,
+            reason: data.reason || null,
+            accountId,
+          },
+        });
+        createdReturns.push({ id: returnRecord.id, refundAmount: itemRefundValue });
+        returnedBySaleItem.set(matchedItem.id, alreadyReturned + returnedQuantity);
+        remaining -= returnedQuantity;
 
-      if (restock) {
+        if (!restock) continue;
+
         if (item.itemType === "PREPARED_PRODUCT" && item.preparedProductId) {
           const stock = await tx.preparedProductStock.findFirst({
             where: {
@@ -106,71 +160,90 @@ const createCustomerReturn = async (
             },
             orderBy: { createdAt: "desc" },
           });
-
           if (stock) {
             await tx.preparedProductStock.update({
               where: { id: stock.id },
-              data: { quantity: { increment: quantity } },
+              data: { quantity: { increment: returnedQuantity } },
             });
           } else {
             await tx.preparedProductStock.create({
               data: {
                 preparedProductId: item.preparedProductId,
                 accountId,
-                quantity,
+                quantity: returnedQuantity,
               },
             });
           }
-        } else if (item.itemType === "PRODUCT" && item.productId) {
+          continue;
+        }
+
+        if (item.itemType !== "PRODUCT" || !item.productId) continue;
+        const existingSaleAllocations = matchedItem.stockAllocations;
+        const stockAllocations: ProductStockAllocationInput[] = [];
+        if (existingSaleAllocations.length > 0) {
+          let leftToRestock = returnedQuantity;
+          for (const allocation of existingSaleAllocations) {
+            if (leftToRestock <= 0) break;
+            const returnedFromBatch =
+              returnedByBatch.get(`${matchedItem.id}:${allocation.productStockId}`) ?? 0;
+            const batchQuantity = Number(allocation.quantity);
+            const saleQuantity = Number(allocation.saleQuantity ?? allocation.quantity);
+            const returnedSaleQuantity =
+              batchQuantity > 0 ? (returnedFromBatch * saleQuantity) / batchQuantity : 0;
+            const availableSaleQuantity = Math.max(0, saleQuantity - returnedSaleQuantity);
+            const allocatedSaleQuantity = Math.min(leftToRestock, availableSaleQuantity);
+            if (allocatedSaleQuantity <= 0 || saleQuantity <= 0) continue;
+            const allocationQuantity = (allocatedSaleQuantity * batchQuantity) / saleQuantity;
+            stockAllocations.push({
+              productStockId: allocation.productStockId,
+              quantity: allocationQuantity,
+              unitCost: Number(allocation.unitCost),
+            });
+            returnedByBatch.set(
+              `${matchedItem.id}:${allocation.productStockId}`,
+              returnedFromBatch + allocationQuantity,
+            );
+            leftToRestock -= allocatedSaleQuantity;
+          }
+          if (leftToRestock > 1e-9) {
+            throw new Error(
+              "Returned quantity is not covered by the original FIFO stock allocations",
+            );
+          }
+        } else {
           const product = await tx.product.findFirst({
             where: { id: item.productId, accountId },
           });
           if (!product) throw new Error("Product not found");
-
-          const stock = await tx.productStock.findFirst({
-            where: {
+          const unitCost = Number(matchedItem.purchasePrice);
+          const stock = await tx.productStock.create({
+            data: {
               productId: item.productId,
-              unitId: product.unitId,
+              unitId: matchedItem.unitId || product.unitId,
+              quantity: 0,
+              purchasePrice: unitCost,
+              rate: 0,
+              totalCost: 0,
               accountId,
-              isDeleted: false,
             },
-            orderBy: { createdAt: "desc" },
           });
-
-          if (stock) {
-            await tx.productStock.update({
-              where: { id: stock.id },
-              data: { quantity: { increment: quantity } },
-            });
-          } else {
-            await tx.productStock.create({
-              data: {
-                productId: item.productId,
-                unitId: product.unitId,
-                quantity,
-                purchasePrice: Number(matchedItem.purchasePrice),
-                rate: 0,
-                totalCost: quantity * Number(matchedItem.purchasePrice),
-                accountId,
-              },
-            });
-          }
+          stockAllocations.push({
+            productStockId: stock.id,
+            quantity: returnedQuantity,
+            unitCost,
+          });
         }
+
+        await restoreProductStockAllocations(tx, accountId, stockAllocations);
+        await tx.customerReturnStockAllocation.createMany({
+          data: stockAllocations.map((allocation) => ({
+            customerReturnId: returnRecord.id,
+            ...allocation,
+          })),
+        });
       }
 
-      returnRecordsToCreate.push({
-        saleId: data.saleId,
-        itemType: item.itemType,
-        productId: item.productId || null,
-        preparedProductId: item.preparedProductId || null,
-        quantity,
-        refundAmount: itemRefundValue,
-        excessRefundAmount: 0,
-        requiresManualRefund: false,
-        restocked: restock,
-        reason: data.reason || null,
-        accountId,
-      });
+      if (remaining > 1e-9) throw new Error("Unable to allocate the full return quantity");
     }
 
     const originalDue = Number(sale.due ?? 0);
@@ -179,13 +252,18 @@ const createCustomerReturn = async (
     const newDue = Number((originalDue - appliedToDue).toFixed(2));
 
     if (excessAmount > 0) {
-      for (const record of returnRecordsToCreate) {
+      for (const record of createdReturns) {
         const share =
           totalRefundValue > 0
             ? Number(((record.refundAmount / totalRefundValue) * excessAmount).toFixed(2))
             : 0;
-        record.excessRefundAmount = share;
-        record.requiresManualRefund = share > 0;
+        await tx.customerReturn.update({
+          where: { id: record.id },
+          data: {
+            excessRefundAmount: share,
+            requiresManualRefund: share > 0,
+          },
+        });
       }
     }
 
@@ -193,12 +271,6 @@ const createCustomerReturn = async (
       where: { id: data.saleId },
       data: { due: newDue },
     });
-
-    for (const record of returnRecordsToCreate) {
-      await tx.customerReturn.create({
-        data: record,
-      });
-    }
 
     await ActivityLogService.createLog({
       userId,
@@ -304,7 +376,13 @@ const deleteReturn = async (id: string, accountId: string, userId: string) => {
   return await prisma.$transaction(async (tx) => {
     const customerReturn = await tx.customerReturn.findFirst({
       where: { id, accountId, isDeleted: false },
-      include: { product: true, preparedProduct: true, sale: true },
+      include: {
+        product: true,
+        preparedProduct: true,
+        sale: true,
+        saleItem: { select: { unitId: true } },
+        stockAllocations: true,
+      },
     });
     if (!customerReturn) throw new Error("Customer return record not found");
 
@@ -339,30 +417,23 @@ const deleteReturn = async (id: string, accountId: string, userId: string) => {
           );
         }
       } else if (customerReturn.itemType === "PRODUCT" && customerReturn.productId) {
-        let remaining = qty;
-        const stocks = await tx.productStock.findMany({
-          where: {
-            productId: customerReturn.productId,
+        if (customerReturn.stockAllocations.length > 0) {
+          await removeProductStockAllocations(
+            tx,
             accountId,
-            isDeleted: false,
-            quantity: { gt: 0 },
-          },
-          orderBy: { createdAt: "asc" },
-        });
-
-        for (const stock of stocks) {
-          if (remaining <= 0) break;
-          const deduct = Math.min(remaining, Number(stock.quantity));
-          await tx.productStock.update({
-            where: { id: stock.id },
-            data: { quantity: { decrement: deduct } },
-          });
-          remaining -= deduct;
-        }
-
-        if (remaining > 0) {
-          throw new Error(
-            "Unable to delete return. Restocked product inventory has already been consumed",
+            customerReturn.stockAllocations.map((allocation) => ({
+              productStockId: allocation.productStockId,
+              quantity: Number(allocation.quantity),
+              unitCost: Number(allocation.unitCost),
+            })),
+          );
+        } else {
+          await consumeProductStock(
+            tx,
+            customerReturn.productId,
+            accountId,
+            qty,
+            customerReturn.saleItem?.unitId,
           );
         }
       }

@@ -12,6 +12,7 @@ router.use(authenticate);
 router.post(
   "/",
   checkPermission("WASTAGE"),
+  checkPermission("WASTAGE", "STOCK_OUT"),
   validateRequest(WastageValidation.createWastageZodSchema),
   WastageController.createWastage,
 );

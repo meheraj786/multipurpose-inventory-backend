@@ -109,7 +109,6 @@ const restoreItem = async (trashId: string, accountId: string, userId: string) =
       CUSTOMER: "customer",
       INVOICE: "invoice",
       SERVICE: "service",
-      PERMISSION: "permission",
       AUTH: "user",
     };
 

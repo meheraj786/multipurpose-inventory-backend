@@ -21,11 +21,6 @@ router.patch(
   validateRequest(StaffValidation.updateStaffZodSchema),
   StaffController.updateStaff,
 );
-router.put(
-  "/:id/permissions",
-  validateRequest(StaffValidation.updatePermissionsZodSchema),
-  StaffController.updatePermissions,
-);
 router.delete("/:id", StaffController.deleteStaff);
 
 export const StaffRoutes: Router = router;

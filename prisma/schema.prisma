@@ -19,11 +19,13 @@ model User {
   name         String?
   password     String
   role         UserRole      @default(STAFF)
+  customRoleId String?
+  customRole   Role?         @relation(fields: [customRoleId], references: [id], onDelete: SetNull)
   isDeleted    Boolean       @default(false)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
-  permissions  Permission[]
 
+  @@index([customRoleId])
   @@index([accountId])
   @@index([email])
 }
@@ -49,7 +51,7 @@ model Account {
   updatedAt        DateTime      @updatedAt
 
   users                 User[]
-  permissions           Permission[]
+  roles                 Role[]
   categories            Category[]
   subCategories         SubCategory[]
   suppliers             Supplier[]
@@ -78,20 +80,32 @@ model Account {
   @@index([status])
 }
 
-model Permission {
+model Role {
+  id          String           @id @default(uuid())
+  name        String
+  description String?
+  accountId   String
+  account     Account          @relation(fields: [accountId], references: [id])
+  users       User[]
+  permissions RolePermission[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@unique([accountId, name])
+  @@index([accountId])
+}
+
+model RolePermission {
   id        String         @id @default(uuid())
-  userId    String
-  user      User           @relation(fields: [userId], references: [id])
-  name      String?
-  accountId String
-  account   Account        @relation(fields: [accountId], references: [id])
+  roleId    String
+  role      Role           @relation(fields: [roleId], references: [id], onDelete: Cascade)
   module    SystemModule
   actions   SystemAction[]
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
 
-  @@unique([userId, module])
-  @@index([accountId])
+  @@unique([roleId, module])
+  @@index([roleId])
 }
 
 // ==================== BILLING ====================
@@ -246,6 +260,7 @@ model Product {
   img                  String?
   description          String?
   sku                  String?
+  barcode              String?
   tax                  Decimal?
   defaultPurchasePrice Decimal?
   defaultSalePrice     Decimal?
@@ -268,6 +283,7 @@ model Product {
   customerReturns        CustomerReturn[]
   wastages               Wastage[]
 
+  @@unique([accountId, barcode])
   @@index([accountId])
   @@index([categoryId])
   @@index([name])
@@ -275,25 +291,28 @@ model Product {
 }
 
 model ProductStock {
-  id            String    @id @default(uuid())
-  productId     String
-  product       Product   @relation(fields: [productId], references: [id])
-  purchaseId    String?
-  purchase      Purchase? @relation(fields: [purchaseId], references: [id])
-  supplierId    String?
-  supplier      Supplier? @relation(fields: [supplierId], references: [id])
-  unitId        String
-  unit          Unit      @relation(fields: [unitId], references: [id])
-  quantity      Decimal
-  purchasePrice Decimal
-  rate          Decimal
-  totalCost     Decimal
-  batch         String?
-  isDeleted     Boolean   @default(false)
-  accountId     String
-  account       Account   @relation(fields: [accountId], references: [id])
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id                 String                          @id @default(uuid())
+  productId          String
+  product            Product                         @relation(fields: [productId], references: [id])
+  purchaseId         String?
+  purchase           Purchase?                       @relation(fields: [purchaseId], references: [id])
+  supplierId         String?
+  supplier           Supplier?                       @relation(fields: [supplierId], references: [id])
+  unitId             String
+  unit               Unit                            @relation(fields: [unitId], references: [id])
+  quantity           Decimal
+  purchasePrice      Decimal
+  rate               Decimal
+  totalCost          Decimal
+  batch              String?
+  isDeleted          Boolean                         @default(false)
+  accountId          String
+  account            Account                         @relation(fields: [accountId], references: [id])
+  createdAt          DateTime                        @default(now())
+  updatedAt          DateTime                        @updatedAt
+  saleAllocations    SaleItemStockAllocation[]
+  wastageAllocations WastageStockAllocation[]
+  returnAllocations  CustomerReturnStockAllocation[]
 
   @@index([accountId])
   @@index([productId])
@@ -378,7 +397,7 @@ model PreparedProduct {
   preparedProductItems  PreparedProductItem[]
   saleItems             SaleItem[]
   wastages              Wastage[]
-  customerReturns               CustomerReturn[]
+  customerReturns       CustomerReturn[]
 
   sales Sale[]
 
@@ -557,10 +576,10 @@ model Sale {
   preparedProductId String?
   preparedProduct   PreparedProduct? @relation(fields: [preparedProductId], references: [id])
 
-  saleItems    SaleItem[]
-  saleServices SaleService[]
-  invoices     Invoice[]
-  customerReturns      CustomerReturn[]
+  saleItems       SaleItem[]
+  saleServices    SaleService[]
+  invoices        Invoice[]
+  customerReturns CustomerReturn[]
 
   @@index([accountId])
   @@index([customerId])
@@ -580,21 +599,38 @@ model SaleItem {
   preparedProductId String?
   preparedProduct   PreparedProduct? @relation(fields: [preparedProductId], references: [id])
 
-  unitId        String
-  unit          Unit     @relation(fields: [unitId], references: [id])
-  quantity      Decimal
-  convertedQty  Decimal
-  purchasePrice Decimal
-  sellPrice     Decimal
-  discount      Decimal? @default(0)
-  accountId     String
-  account       Account  @relation(fields: [accountId], references: [id])
-  createdAt     DateTime @default(now())
+  unitId           String
+  unit             Unit                      @relation(fields: [unitId], references: [id])
+  quantity         Decimal
+  convertedQty     Decimal
+  purchasePrice    Decimal
+  sellPrice        Decimal
+  discount         Decimal?                  @default(0)
+  accountId        String
+  account          Account                   @relation(fields: [accountId], references: [id])
+  createdAt        DateTime                  @default(now())
+  stockAllocations SaleItemStockAllocation[]
+  customerReturns  CustomerReturn[]
 
   @@index([saleId])
   @@index([productId])
   @@index([preparedProductId])
   @@index([accountId])
+}
+
+model SaleItemStockAllocation {
+  id             String       @id @default(uuid())
+  saleItemId     String
+  saleItem       SaleItem     @relation(fields: [saleItemId], references: [id], onDelete: Cascade)
+  productStockId String
+  productStock   ProductStock @relation(fields: [productStockId], references: [id], onDelete: Restrict)
+  quantity       Decimal
+  saleQuantity   Decimal?
+  unitCost       Decimal
+  createdAt      DateTime     @default(now())
+
+  @@index([saleItemId])
+  @@index([productStockId])
 }
 
 model SaleService {
@@ -620,21 +656,22 @@ model SaleService {
 // ==================== WASTAGE ====================
 
 model Wastage {
-  id                String           @id @default(uuid())
-  productId         String?
-  product           Product?         @relation(fields: [productId], references: [id])
-  rawProductId      String?
-  rawProduct        RawProduct?      @relation(fields: [rawProductId], references: [id])
-  preparedProductId String?
-  preparedProduct   PreparedProduct? @relation(fields: [preparedProductId], references: [id])
-  quantity          Decimal
-  reason            String
-  notes             String?
-  isDeleted         Boolean          @default(false)
-  accountId         String
-  account           Account          @relation(fields: [accountId], references: [id])
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
+  id                      String                   @id @default(uuid())
+  productId               String?
+  product                 Product?                 @relation(fields: [productId], references: [id])
+  rawProductId            String?
+  rawProduct              RawProduct?              @relation(fields: [rawProductId], references: [id])
+  preparedProductId       String?
+  preparedProduct         PreparedProduct?         @relation(fields: [preparedProductId], references: [id])
+  quantity                Decimal
+  reason                  String
+  notes                   String?
+  isDeleted               Boolean                  @default(false)
+  accountId               String
+  account                 Account                  @relation(fields: [accountId], references: [id])
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  productStockAllocations WastageStockAllocation[]
 
   @@index([accountId])
   @@index([productId])
@@ -642,31 +679,63 @@ model Wastage {
   @@index([preparedProductId])
 }
 
+model WastageStockAllocation {
+  id             String       @id @default(uuid())
+  wastageId      String
+  wastage        Wastage      @relation(fields: [wastageId], references: [id], onDelete: Cascade)
+  productStockId String
+  productStock   ProductStock @relation(fields: [productStockId], references: [id], onDelete: Restrict)
+  quantity       Decimal
+  unitCost       Decimal
+  createdAt      DateTime     @default(now())
+
+  @@index([wastageId])
+  @@index([productStockId])
+}
+
 model CustomerReturn {
-  id                   String           @id @default(uuid())
+  id                   String                          @id @default(uuid())
   saleId               String
-  sale                 Sale             @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  itemType             SaleItemType     @default(PRODUCT)
+  sale                 Sale                            @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  saleItemId           String?
+  saleItem             SaleItem?                       @relation(fields: [saleItemId], references: [id], onDelete: SetNull)
+  itemType             SaleItemType                    @default(PRODUCT)
   productId            String?
-  product              Product?         @relation(fields: [productId], references: [id])
+  product              Product?                        @relation(fields: [productId], references: [id])
   preparedProductId    String?
-  preparedProduct      PreparedProduct? @relation(fields: [preparedProductId], references: [id])
+  preparedProduct      PreparedProduct?                @relation(fields: [preparedProductId], references: [id])
   quantity             Decimal
-  refundAmount         Decimal          @default(0)
-  excessRefundAmount   Decimal          @default(0)
-  requiresManualRefund Boolean          @default(false)
-  restocked            Boolean          @default(true)
+  refundAmount         Decimal                         @default(0)
+  excessRefundAmount   Decimal                         @default(0)
+  requiresManualRefund Boolean                         @default(false)
+  restocked            Boolean                         @default(true)
   reason               String?
-  isDeleted            Boolean          @default(false)
+  isDeleted            Boolean                         @default(false)
   accountId            String
-  account              Account          @relation(fields: [accountId], references: [id])
-  createdAt            DateTime         @default(now())
-  updatedAt            DateTime         @updatedAt
+  account              Account                         @relation(fields: [accountId], references: [id])
+  createdAt            DateTime                        @default(now())
+  updatedAt            DateTime                        @updatedAt
+  stockAllocations     CustomerReturnStockAllocation[]
 
   @@index([accountId])
   @@index([saleId])
   @@index([productId])
   @@index([preparedProductId])
+  @@index([saleItemId])
+}
+
+model CustomerReturnStockAllocation {
+  id               String         @id @default(uuid())
+  customerReturnId String
+  customerReturn   CustomerReturn @relation(fields: [customerReturnId], references: [id], onDelete: Cascade)
+  productStockId   String
+  productStock     ProductStock   @relation(fields: [productStockId], references: [id], onDelete: Restrict)
+  quantity         Decimal
+  unitCost         Decimal
+  createdAt        DateTime       @default(now())
+
+  @@index([customerReturnId])
+  @@index([productStockId])
 }
 
 // ==================== INVOICE ====================

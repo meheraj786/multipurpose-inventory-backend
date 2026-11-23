@@ -14,6 +14,13 @@ const createProduct = async (
   accountId: string,
   userId: string,
 ): Promise<Product> => {
+  if (data.barcode) {
+    const existing = await prisma.product.findFirst({
+      where: { barcode: data.barcode, accountId },
+    });
+    if (existing) throw new Error("A product with this barcode already exists");
+  }
+
   if (data.sku) {
     const existing = await prisma.product.findFirst({
       where: { sku: data.sku, accountId, isDeleted: false },
@@ -66,6 +73,7 @@ const getAllProducts = async (
       OR: [
         { name: { contains: search, mode: "insensitive" } },
         { sku: { contains: search, mode: "insensitive" } },
+        { barcode: { contains: search, mode: "insensitive" } },
         { description: { contains: search, mode: "insensitive" } },
       ],
     }),
@@ -83,17 +91,40 @@ const getAllProducts = async (
         unit: true,
         productStocks: {
           where: { isDeleted: false },
-          select: { quantity: true },
+          select: {
+            quantity: true,
+            totalCost: true,
+            unit: { select: { group: true, conversionFactor: true } },
+          },
         },
       },
     }),
     prisma.product.count({ where }),
   ]);
 
-  const dataWithStock = data.map((product) => ({
-    ...product,
-    totalStock: product.productStocks.reduce((sum, s) => sum + Number(s.quantity), 0),
-  }));
+  const dataWithStock = data.map((product) => {
+    const totalStock = product.productStocks.reduce((sum, stock) => {
+      if (stock.unit.group !== product.unit.group) {
+        throw new Error(`Stock batch for ${product.name} has an incompatible unit`);
+      }
+      return (
+        sum +
+        (Number(stock.quantity) * Number(stock.unit.conversionFactor)) /
+          Number(product.unit.conversionFactor)
+      );
+    }, 0);
+    const totalStockCost = product.productStocks.reduce(
+      (sum, stock) => sum + Number(stock.totalCost),
+      0,
+    );
+
+    return {
+      ...product,
+      totalStock,
+      totalStockCost,
+      avgPurchasePrice: totalStock > 0 ? totalStockCost / totalStock : null,
+    };
+  });
 
   return {
     data: dataWithStock,
@@ -138,9 +169,66 @@ const getSingleProduct = async (id: string, accountId: string) => {
 
   if (!product) throw new Error("Product not found");
 
-  const totalStock = product.productStocks.reduce((sum, s) => sum + Number(s.quantity), 0);
+  const totalStock = product.productStocks.reduce((sum, stock) => {
+    if (stock.unit.group !== product.unit.group) {
+      throw new Error(`Stock batch for ${product.name} has an incompatible unit`);
+    }
+    return (
+      sum +
+      (Number(stock.quantity) * Number(stock.unit.conversionFactor)) /
+        Number(product.unit.conversionFactor)
+    );
+  }, 0);
 
-  return { ...product, totalStock };
+  const totalStockCost = product.productStocks.reduce(
+    (sum, stock) => sum + Number(stock.totalCost),
+    0,
+  );
+  const avgPurchasePrice = totalStock > 0 ? totalStockCost / totalStock : null;
+
+  return { ...product, totalStock, totalStockCost, avgPurchasePrice };
+};
+
+const getProductByBarcode = async (barcode: string, accountId: string) => {
+  const product = await prisma.product.findFirst({
+    where: { barcode, accountId, isDeleted: false },
+    include: {
+      category: true,
+      subCategory: true,
+      unit: true,
+      productStocks: {
+        where: { isDeleted: false },
+        select: {
+          quantity: true,
+          totalCost: true,
+          unit: { select: { group: true, conversionFactor: true } },
+        },
+      },
+    },
+  });
+  if (!product) return null;
+
+  const totalStock = product.productStocks.reduce((sum, stock) => {
+    if (stock.unit.group !== product.unit.group) {
+      throw new Error(`Stock batch for ${product.name} has an incompatible unit`);
+    }
+    return (
+      sum +
+      (Number(stock.quantity) * Number(stock.unit.conversionFactor)) /
+        Number(product.unit.conversionFactor)
+    );
+  }, 0);
+  const totalStockCost = product.productStocks.reduce(
+    (sum, stock) => sum + Number(stock.totalCost),
+    0,
+  );
+
+  return {
+    ...product,
+    totalStock,
+    totalStockCost,
+    avgPurchasePrice: totalStock > 0 ? totalStockCost / totalStock : null,
+  };
 };
 
 const updateProduct = async (
@@ -159,6 +247,15 @@ const updateProduct = async (
       where: { sku: data.sku, accountId, isDeleted: false, NOT: { id } },
     });
     if (skuConflict) throw new Error("A product with this SKU already exists");
+  }
+
+  if (data.barcode && data.barcode !== existing.barcode) {
+    const barcodeConflict = await prisma.product.findFirst({
+      where: { barcode: data.barcode, accountId, NOT: { id } },
+    });
+    if (barcodeConflict) {
+      throw new Error("A product with this barcode already exists");
+    }
   }
 
   if (data.unitId) {
@@ -276,15 +373,25 @@ const getStockSummary = async (productId: string, accountId: string) => {
 
   const stocks = await prisma.productStock.findMany({
     where: { productId, accountId, isDeleted: false },
-    select: { quantity: true, purchasePrice: true, totalCost: true },
+    select: {
+      quantity: true,
+      totalCost: true,
+      unit: { select: { group: true, conversionFactor: true } },
+    },
   });
 
-  const totalStock = stocks.reduce((sum, s) => sum + Number(s.quantity), 0);
+  const totalStock = stocks.reduce((sum, stock) => {
+    if (stock.unit.group !== product.unit.group) {
+      throw new Error(`Stock batch for ${product.name} has an incompatible unit`);
+    }
+    return (
+      sum +
+      (Number(stock.quantity) * Number(stock.unit.conversionFactor)) /
+        Number(product.unit.conversionFactor)
+    );
+  }, 0);
   const totalCost = stocks.reduce((sum, s) => sum + Number(s.totalCost), 0);
-  const avgPurchasePrice =
-    stocks.length > 0
-      ? stocks.reduce((sum, s) => sum + Number(s.purchasePrice), 0) / stocks.length
-      : 0;
+  const avgPurchasePrice = totalStock > 0 ? totalCost / totalStock : 0;
 
   return {
     totalStock,
@@ -298,6 +405,7 @@ export const ProductService = {
   createProduct,
   getAllProducts,
   getSingleProduct,
+  getProductByBarcode,
   updateProduct,
   deleteProduct,
   stockIn,
